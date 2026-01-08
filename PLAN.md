@@ -406,15 +406,12 @@ class TranscriptionService {
 2. **App Icon:** Cassette tape? The recorder device? Record button?
 
 ### Core UX Decisions
-3. **Action Button behavior:**
-   - Same hold-to-record as in-app?
-   - Or tap-to-start (since you can't hold while pulling phone out)?
-   - Should it work from lock screen?
+3. ~~**Action Button behavior:**~~ → **DECIDED: Single tap to start, double tap to stop**
+   - Single tap starts recording immediately
+   - Double tap stops and saves
+   - Works from lock screen
 
-4. **Maximum recording length:**
-   - Unlimited?
-   - Cap at 5/10/30 minutes?
-   - Warning at certain length?
+4. ~~**Maximum recording length:**~~ → **DECIDED: 30 minute cap**
 
 5. **What happens if recording during incoming call?**
    - Auto-save what was recorded?
@@ -424,15 +421,14 @@ class TranscriptionService {
    - Allow inline editing of transcripts?
    - Or keep them read-only (source of truth is audio)?
 
-7. **Playback speed control:**
-   - Include like original Talkboy had? (Slow-mo voice effect was iconic)
-   - Slider or preset speeds (0.5x, 1x, 1.5x, 2x)?
+7. ~~**Playback speed control:**~~ → **DECIDED: Yes, include slow-mo effect**
+   - Classic Talkboy-style speed control
+   - Slider for variable speed
 
 ### Library & Organization
-8. **Recording titles:**
-   - Auto-generate from first words of transcript?
-   - Require manual naming?
-   - Date/time only?
+8. ~~**Recording titles:**~~ → **DECIDED: Date/time only**
+   - Simple, no manual naming required
+   - Format: "Jan 8, 2026 at 3:42 PM"
 
 9. **Search:**
    - Search transcript text?
@@ -444,15 +440,14 @@ class TranscriptionService {
     - Tags/labels?
 
 ### Visual & Audio Feedback
-11. **Sound effects:**
-    - Tape motor sounds during record/play?
-    - Button click sounds?
-    - Option to disable?
+11. ~~**Sound effects:**~~ → **DECIDED: Yes**
+    - Tape motor sounds during record/play
+    - Button click sounds
+    - Option to disable in settings
 
-12. **Cassette skins/themes:**
-    - Single design (Talkboy-inspired)?
-    - Multiple unlockable skins (Walkman, microcassette, boombox)?
-    - User customizable colors?
+12. ~~**Cassette skins/themes:**~~ → **DECIDED: Single theme for v1**
+    - Talkboy-inspired design only
+    - Keep focused, maybe add more later
 
 ### Technical & Privacy
 13. **Transcription service:**
@@ -466,11 +461,10 @@ class TranscriptionService {
     - Auto-export to iCloud Drive?
 
 ### Business Model
-15. **Monetization:**
-    - Free with ads?
-    - One-time purchase ($2.99-$4.99)?
-    - Freemium (basic free, pro features paid)?
-    - What would be "pro" features?
+15. ~~**Monetization:**~~ → **DECIDED: One-time purchase**
+    - Simple paid app
+    - No ads, no subscriptions
+    - Price TBD ($2.99-$4.99 range)
 
 16. **Cloud sync:**
     - iCloud only (simple)?
@@ -479,18 +473,17 @@ class TranscriptionService {
 
 ---
 
-## My Recommendations (for discussion)
+## Decisions Summary
 
-| Decision | Recommendation | Reasoning |
-|----------|---------------|-----------|
-| App name | **TapeNote** or **VoiceTape** | Avoids trademark, clear purpose |
-| Action Button | Tap to toggle (not hold) | Can't hold while pulling out phone |
-| Max length | 10 min warning, 30 min cap | Keeps files manageable |
-| Transcription | Apple Speech only for v1 | Free, private, good enough |
-| Skins | Single Talkboy design for v1 | Focus on core experience first |
-| Sound effects | Yes, with toggle | Adds charm, but respect user pref |
-| Monetization | One-time $2.99 | Simple, no ads, no subscription fatigue |
-| Cloud sync | iCloud for v1 | Simple, Apple handles it |
+| Decision | Choice |
+|----------|--------|
+| Action Button | Single tap = start, Double tap = stop |
+| Max length | 30 minutes |
+| Playback speed | Yes, slow-mo effect included |
+| Recording titles | Date/time only |
+| Sound effects | Yes (with toggle) |
+| Skins | Single Talkboy theme |
+| Monetization | One-time purchase |
 
 ---
 
