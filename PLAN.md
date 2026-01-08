@@ -1,8 +1,8 @@
-# Cassette Recorder iOS App - Implementation Plan
+# midIDEA - iOS App Implementation Plan
 
 ## App Overview
 
-**Name Ideas:** TalkBoy, VoiceTape, RetroMemo, CassetteMemo
+**App Name:** midIDEA
 
 A nostalgic iOS voice recorder app styled after the iconic Talkboy cassette recorder from Home Alone 2. Features instant recording via iPhone Action Button, automatic transcription, and a recordings library.
 
@@ -30,7 +30,7 @@ Inspired by the Talkboy reference images:
 │         │   tape reels)   │             │     recording/playing)
 │         ╰─────────────────╯             │
 │                                         │
-│      "Talkboy" (retro script font)      │
+│      "midIDEA" (retro script font)      │
 │                                         │
 │   ┌─────────────────────────────┐       │
 │   │ ▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░ │       │  ← VU meter / waveform
@@ -402,7 +402,7 @@ class TranscriptionService {
 ## Open Questions / Decisions Needed
 
 ### Branding & Identity
-1. **App Name:** TalkBoy (trademark issues?), RetroMemo, CassetteMemo, VoiceTape, TapeNote?
+1. ~~**App Name:**~~ → **DECIDED: midIDEA**
 2. **App Icon:** Cassette tape? The recorder device? Record button?
 
 ### Core UX Decisions
@@ -477,6 +477,7 @@ class TranscriptionService {
 
 | Decision | Choice |
 |----------|--------|
+| App name | **midIDEA** |
 | Action Button | Single tap = start, Double tap = stop |
 | Max length | 30 minutes |
 | Playback speed | Yes, slow-mo effect included |
