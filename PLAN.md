@@ -49,7 +49,49 @@ Inspired by the Talkboy reference images:
 - **Rewind (◄◄)** - Skip back 10s or previous recording
 - **Fast Forward (►►)** - Skip forward 10s or next recording
 - **Play (►)** - Play current/selected recording
-- **Record (●)** - Red button, starts recording with animated red "recording" indicator light
+- **Record (●)** - **HOLD TO RECORD** button (see interaction below)
+
+### 3a. Hold-to-Record Interaction
+The record button uses a press-and-hold gesture with rich visual feedback:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  IDLE STATE                                                 │
+│  ┌───────┐                                                  │
+│  │   ●   │  Red button, subtle idle glow                    │
+│  └───────┘                                                  │
+├─────────────────────────────────────────────────────────────┤
+│  TOUCH DOWN (Hold)                                          │
+│  ┌─────────────┐                                            │
+│  │  ╭─────╮    │  Button expands slightly                   │
+│  │  │  ●  │    │  Bright red GLOW emanates outward          │
+│  │  ╰─────╯    │  Recording starts IMMEDIATELY              │
+│  └─────────────┘  Haptic: firm press feedback               │
+├─────────────────────────────────────────────────────────────┤
+│  RELEASE → 3-SECOND COUNTDOWN                               │
+│                                                             │
+│      ╭───────────────╮                                      │
+│      │               │                                      │
+│      │      (3)      │  Circle expands with countdown       │
+│      │               │  Pulsing animation: 3... 2... 1...   │
+│      ╰───────────────╯  Ring depletes like a timer          │
+│                                                             │
+│  • TAP AGAIN during countdown → RESUME recording            │
+│  • LET IT COMPLETE → Finalize & auto-transcribe             │
+│  • SWIPE AWAY → Cancel recording (discard)                  │
+├─────────────────────────────────────────────────────────────┤
+│  COUNTDOWN COMPLETE                                         │
+│  Recording saved, transcription begins                      │
+│  Haptic: success tap                                        │
+│  Cassette "ejects" animation → shows transcript             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why 3-second countdown:**
+- Gives user a moment to continue if they released accidentally
+- Creates anticipation/ritual around saving
+- Clear cancel window (swipe away to discard)
+- Feels like tape "winding down"
 
 ### 4. Cassette Animation Details
 - Two tape reels that spin during recording/playback
@@ -359,11 +401,96 @@ class TranscriptionService {
 
 ## Open Questions / Decisions Needed
 
-1. **App Name:** TalkBoy (trademark issues?), RetroMemo, CassetteMemo, VoiceTape?
-2. **Monetization:** Free with ads? One-time purchase? Subscription for cloud sync?
-3. **Cloud Sync:** iCloud only, or also support other services?
-4. **Playback Speed:** Include speed control like original Talkboy had?
-5. **Multiple Cassette Skins:** Different recorder designs as unlockables/purchases?
+### Branding & Identity
+1. **App Name:** TalkBoy (trademark issues?), RetroMemo, CassetteMemo, VoiceTape, TapeNote?
+2. **App Icon:** Cassette tape? The recorder device? Record button?
+
+### Core UX Decisions
+3. **Action Button behavior:**
+   - Same hold-to-record as in-app?
+   - Or tap-to-start (since you can't hold while pulling phone out)?
+   - Should it work from lock screen?
+
+4. **Maximum recording length:**
+   - Unlimited?
+   - Cap at 5/10/30 minutes?
+   - Warning at certain length?
+
+5. **What happens if recording during incoming call?**
+   - Auto-save what was recorded?
+   - Pause and resume after?
+
+6. **Transcript editing:**
+   - Allow inline editing of transcripts?
+   - Or keep them read-only (source of truth is audio)?
+
+7. **Playback speed control:**
+   - Include like original Talkboy had? (Slow-mo voice effect was iconic)
+   - Slider or preset speeds (0.5x, 1x, 1.5x, 2x)?
+
+### Library & Organization
+8. **Recording titles:**
+   - Auto-generate from first words of transcript?
+   - Require manual naming?
+   - Date/time only?
+
+9. **Search:**
+   - Search transcript text?
+   - Full-text search across all recordings?
+
+10. **Folders/Tags:**
+    - Simple flat list?
+    - Allow organizing into folders?
+    - Tags/labels?
+
+### Visual & Audio Feedback
+11. **Sound effects:**
+    - Tape motor sounds during record/play?
+    - Button click sounds?
+    - Option to disable?
+
+12. **Cassette skins/themes:**
+    - Single design (Talkboy-inspired)?
+    - Multiple unlockable skins (Walkman, microcassette, boombox)?
+    - User customizable colors?
+
+### Technical & Privacy
+13. **Transcription service:**
+    - Apple Speech only (on-device, private, free)?
+    - Option for Whisper API (better accuracy, costs money, sends data)?
+    - Both with toggle?
+
+14. **Storage location:**
+    - App sandbox only?
+    - Option to save to Files app?
+    - Auto-export to iCloud Drive?
+
+### Business Model
+15. **Monetization:**
+    - Free with ads?
+    - One-time purchase ($2.99-$4.99)?
+    - Freemium (basic free, pro features paid)?
+    - What would be "pro" features?
+
+16. **Cloud sync:**
+    - iCloud only (simple)?
+    - Cross-platform (needs backend)?
+    - Skip for v1?
+
+---
+
+## My Recommendations (for discussion)
+
+| Decision | Recommendation | Reasoning |
+|----------|---------------|-----------|
+| App name | **TapeNote** or **VoiceTape** | Avoids trademark, clear purpose |
+| Action Button | Tap to toggle (not hold) | Can't hold while pulling out phone |
+| Max length | 10 min warning, 30 min cap | Keeps files manageable |
+| Transcription | Apple Speech only for v1 | Free, private, good enough |
+| Skins | Single Talkboy design for v1 | Focus on core experience first |
+| Sound effects | Yes, with toggle | Adds charm, but respect user pref |
+| Monetization | One-time $2.99 | Simple, no ads, no subscription fatigue |
+| Cloud sync | iCloud for v1 | Simple, Apple handles it |
 
 ---
 
