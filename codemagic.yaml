@@ -1,0 +1,88 @@
+workflows:
+  ios-workflow:
+    name: iOS Build & Deploy
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mididea.app
+      vars:
+        XCODE_WORKSPACE: "midIDEA.xcodeproj"
+        XCODE_SCHEME: "midIDEA"
+      xcode: latest
+      cocoapods: default
+
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: develop
+          include: true
+
+    scripts:
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_IDENTIFIER" --type IOS_APP_STORE
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build iOS app
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
+            --archive-flags="-destination 'generic/platform=iOS'"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+  # Development builds (no signing, just verify it builds)
+  ios-dev-workflow:
+    name: iOS Development Build
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+
+    environment:
+      xcode: latest
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: '*'
+          include: true
+
+    scripts:
+      - name: Build for simulator
+        script: |
+          xcodebuild build \
+            -project midIDEA.xcodeproj \
+            -scheme midIDEA \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log

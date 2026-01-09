@@ -1,0 +1,230 @@
+import AVFoundation
+import Combine
+
+@MainActor
+class AudioService: NSObject, ObservableObject {
+    // MARK: - Published Properties
+
+    @Published var isRecording = false
+    @Published var isPlaying = false
+    @Published var currentTime: TimeInterval = 0
+    @Published var audioLevel: Float = 0
+    @Published var duration: TimeInterval = 0
+
+    // MARK: - Private Properties
+
+    private var audioRecorder: AVAudioRecorder?
+    private var audioPlayer: AVAudioPlayer?
+    private var meteringTimer: Timer?
+    private var playbackTimer: Timer?
+    private var currentRecordingURL: URL?
+
+    // MARK: - Constants
+
+    static let maxRecordingDuration: TimeInterval = 30 * 60 // 30 minutes
+
+    // MARK: - Recording
+
+    func startRecording() throws -> URL {
+        let fileName = "\(UUID().uuidString).m4a"
+        let url = Recording.recordingsDirectory.appendingPathComponent(fileName)
+        currentRecordingURL = url
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        audioRecorder = try AVAudioRecorder(url: url, settings: settings)
+        audioRecorder?.isMeteringEnabled = true
+        audioRecorder?.delegate = self
+        audioRecorder?.record()
+
+        isRecording = true
+        currentTime = 0
+
+        startMeteringTimer()
+        playRecordStartSound()
+
+        return url
+    }
+
+    func stopRecording() -> (url: URL, duration: TimeInterval)? {
+        guard let recorder = audioRecorder, isRecording else { return nil }
+
+        let duration = recorder.currentTime
+        recorder.stop()
+
+        stopMeteringTimer()
+        isRecording = false
+        audioLevel = 0
+
+        playRecordStopSound()
+
+        if let url = currentRecordingURL {
+            return (url, duration)
+        }
+        return nil
+    }
+
+    func cancelRecording() {
+        guard isRecording else { return }
+
+        audioRecorder?.stop()
+        stopMeteringTimer()
+        isRecording = false
+        audioLevel = 0
+
+        // Delete the cancelled recording file
+        if let url = currentRecordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        currentRecordingURL = nil
+    }
+
+    // MARK: - Playback
+
+    func play(url: URL, rate: Float = 1.0) throws {
+        stop()
+
+        audioPlayer = try AVAudioPlayer(contentsOf: url)
+        audioPlayer?.delegate = self
+        audioPlayer?.enableRate = true
+        audioPlayer?.rate = rate
+        audioPlayer?.prepareToPlay()
+        audioPlayer?.play()
+
+        duration = audioPlayer?.duration ?? 0
+        isPlaying = true
+
+        startPlaybackTimer()
+        playTapeStartSound()
+    }
+
+    func pause() {
+        audioPlayer?.pause()
+        isPlaying = false
+        stopPlaybackTimer()
+    }
+
+    func resume() {
+        audioPlayer?.play()
+        isPlaying = true
+        startPlaybackTimer()
+    }
+
+    func stop() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isPlaying = false
+        currentTime = 0
+        stopPlaybackTimer()
+    }
+
+    func seek(to time: TimeInterval) {
+        audioPlayer?.currentTime = time
+        currentTime = time
+    }
+
+    func setPlaybackRate(_ rate: Float) {
+        audioPlayer?.rate = rate
+    }
+
+    func skipForward(_ seconds: TimeInterval = 10) {
+        guard let player = audioPlayer else { return }
+        let newTime = min(player.currentTime + seconds, player.duration)
+        seek(to: newTime)
+    }
+
+    func skipBackward(_ seconds: TimeInterval = 10) {
+        guard let player = audioPlayer else { return }
+        let newTime = max(player.currentTime - seconds, 0)
+        seek(to: newTime)
+    }
+
+    // MARK: - Sound Effects
+
+    private func playRecordStartSound() {
+        // TODO: Play tape motor start sound
+        HapticService.shared.playRecordStart()
+    }
+
+    private func playRecordStopSound() {
+        // TODO: Play tape motor stop sound
+        HapticService.shared.playRecordStop()
+    }
+
+    private func playTapeStartSound() {
+        // TODO: Play tape playback start sound
+    }
+
+    // MARK: - Timers
+
+    private func startMeteringTimer() {
+        meteringTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateMetering()
+            }
+        }
+    }
+
+    private func stopMeteringTimer() {
+        meteringTimer?.invalidate()
+        meteringTimer = nil
+    }
+
+    private func updateMetering() {
+        guard let recorder = audioRecorder, isRecording else { return }
+        recorder.updateMeters()
+        audioLevel = recorder.averagePower(forChannel: 0)
+        currentTime = recorder.currentTime
+
+        // Check max duration
+        if currentTime >= Self.maxRecordingDuration {
+            _ = stopRecording()
+        }
+    }
+
+    private func startPlaybackTimer() {
+        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updatePlayback()
+            }
+        }
+    }
+
+    private func stopPlaybackTimer() {
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+    }
+
+    private func updatePlayback() {
+        guard let player = audioPlayer, isPlaying else { return }
+        currentTime = player.currentTime
+    }
+}
+
+// MARK: - AVAudioRecorderDelegate
+
+extension AudioService: AVAudioRecorderDelegate {
+    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        Task { @MainActor in
+            isRecording = false
+            stopMeteringTimer()
+        }
+    }
+}
+
+// MARK: - AVAudioPlayerDelegate
+
+extension AudioService: AVAudioPlayerDelegate {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            isPlaying = false
+            currentTime = 0
+            stopPlaybackTimer()
+        }
+    }
+}

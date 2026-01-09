@@ -1,0 +1,117 @@
+import SwiftUI
+
+extension Color {
+    // MARK: - Background Colors
+    static let backgroundTop = Color("BackgroundTop")
+    static let backgroundBottom = Color("BackgroundBottom")
+
+    // MARK: - Cassette Colors
+    static let cassetteLight = Color("CassetteLight")
+    static let cassetteDark = Color("CassetteDark")
+    static let tapeWindow = Color("TapeWindow")
+    static let tapeRibbon = Color("TapeRibbon")
+
+    // MARK: - Reel Colors
+    static let reelBase = Color("ReelBase")
+    static let reelHub = Color("ReelHub")
+    static let reelSpoke = Color("ReelSpoke")
+
+    // MARK: - Control Colors
+    static let controlsBackground = Color("ControlsBackground")
+    static let buttonBackground = Color("ButtonBackground")
+    static let sliderTrack = Color("SliderTrack")
+}
+
+// MARK: - Color Definitions (for reference when setting up Assets)
+/*
+ Add these colors to Assets.xcassets:
+
+ BackgroundTop:
+   Light: #F5F5F7
+   Dark: #1C1C1E
+
+ BackgroundBottom:
+   Light: #E5E5E7
+   Dark: #2C2C2E
+
+ CassetteLight:
+   Light: #C0C0C0 (silver)
+   Dark: #4A4A4A
+
+ CassetteDark:
+   Light: #A0A0A0
+   Dark: #3A3A3A
+
+ TapeWindow:
+   Light: #F5F5DC (beige/cream)
+   Dark: #3A3A3A
+
+ TapeRibbon:
+   Light: #4A3728 (dark brown)
+   Dark: #2A1A10
+
+ ReelBase:
+   Light: #8B4513 (saddle brown)
+   Dark: #5D2E0A
+
+ ReelHub:
+   Light: #2C2C2E (dark gray)
+   Dark: #1C1C1E
+
+ ReelSpoke:
+   Light: #F5F5F5 (white)
+   Dark: #3C3C3E
+
+ ControlsBackground:
+   Light: #FFFFFF with 0.9 opacity
+   Dark: #2C2C2E with 0.9 opacity
+
+ ButtonBackground:
+   Light: #E8E8E8
+   Dark: #3C3C3E
+
+ SliderTrack:
+   Light: #D0D0D0
+   Dark: #4A4A4A
+*/
+
+// MARK: - Fallback Colors (when assets not configured)
+
+extension Color {
+    static func themed(_ name: String) -> Color {
+        // Attempt to load from asset catalog, fallback to defaults
+        if let _ = UIColor(named: name) {
+            return Color(name)
+        }
+
+        // Fallback colors
+        switch name {
+        case "BackgroundTop":
+            return Color(UIColor.systemBackground)
+        case "BackgroundBottom":
+            return Color(UIColor.secondarySystemBackground)
+        case "CassetteLight":
+            return Color(red: 0.75, green: 0.75, blue: 0.75)
+        case "CassetteDark":
+            return Color(red: 0.63, green: 0.63, blue: 0.63)
+        case "TapeWindow":
+            return Color(red: 0.96, green: 0.96, blue: 0.86)
+        case "TapeRibbon":
+            return Color(red: 0.29, green: 0.22, blue: 0.16)
+        case "ReelBase":
+            return Color(red: 0.55, green: 0.27, blue: 0.07)
+        case "ReelHub":
+            return Color(red: 0.17, green: 0.17, blue: 0.18)
+        case "ReelSpoke":
+            return Color.white
+        case "ControlsBackground":
+            return Color(UIColor.tertiarySystemBackground)
+        case "ButtonBackground":
+            return Color(UIColor.quaternarySystemFill)
+        case "SliderTrack":
+            return Color(UIColor.systemGray4)
+        default:
+            return Color.gray
+        }
+    }
+}
