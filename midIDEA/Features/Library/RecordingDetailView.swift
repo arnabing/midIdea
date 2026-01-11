@@ -1,4 +1,28 @@
 import SwiftUI
+import UIKit
+
+// MARK: - Share Sheet Helper
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
+
+        // Configure for iPad popover if needed
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = UIView()
+            popover.sourceRect = CGRect(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
 
 struct RecordingDetailView: View {
     let recording: Recording
@@ -10,6 +34,8 @@ struct RecordingDetailView: View {
     @State private var playbackRate: Float = 1.0
     @State private var showCopiedToast = false
     @State private var isRetranscribing = false
+    @State private var showingShareSheet = false
+    @State private var shareItems: [Any] = []
 
     var body: some View {
         NavigationStack {
@@ -63,6 +89,9 @@ struct RecordingDetailView: View {
                     .opacity(showCopiedToast ? 1 : 0)
                     .animation(.easeInOut, value: showCopiedToast)
             )
+            .sheet(isPresented: $showingShareSheet) {
+                ShareSheet(items: shareItems)
+            }
         }
     }
 
@@ -250,11 +279,48 @@ struct RecordingDetailView: View {
     }
 
     private func shareRecording() {
-        // TODO: Implement share sheet
+        #if DEBUG
+        print("[Sharing] Sharing audio recording: \(recording.audioFileName)")
+        #endif
+
+        // Pause playback to avoid AVAudioSession conflicts
+        let wasPlaying = audioService.isPlaying
+        if wasPlaying {
+            audioService.pause()
+            #if DEBUG
+            print("[Sharing] Paused playback before sharing")
+            #endif
+        }
+
+        shareItems = [recording.audioURL]
+        showingShareSheet = true
     }
 
     private func shareTranscript() {
-        // TODO: Implement share sheet
+        guard let transcript = recording.transcript else {
+            #if DEBUG
+            print("[Sharing] Attempted to share transcript but none exists")
+            #endif
+            return
+        }
+
+        #if DEBUG
+        print("[Sharing] Sharing transcript: \(transcript.count) characters")
+        #endif
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+
+        let textToShare = """
+        Recording from \(dateFormatter.string(from: recording.createdAt))
+        Duration: \(recording.durationFormatted)
+
+        \(transcript)
+        """
+
+        shareItems = [textToShare]
+        showingShareSheet = true
     }
 
     private func deleteRecording() {

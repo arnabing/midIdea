@@ -86,6 +86,8 @@ struct TalkboyRealisticView: View {
                         VStack(spacing: 0) {
                             // Keybed
                             TalkboyKeybedView(
+                                isRecording: audioService.isRecording,
+                                isPlaying: audioService.isPlaying,
                                 onRewind: { audioService.skipBackward() },
                                 onPlay: handlePlay,
                                 onStop: handleStop,

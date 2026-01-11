@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct TalkboyKeybedView: View {
+    let isRecording: Bool
+    let isPlaying: Bool
     let onRewind: () -> Void
     let onPlay: () -> Void
     let onStop: () -> Void
@@ -9,15 +11,15 @@ struct TalkboyKeybedView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            TalkboyKey(label: "STOP", glyph: .rewind, action: onRewind)
+            TalkboyKey(label: "REW", glyph: .rewind, action: onRewind)
                 .frame(maxWidth: .infinity)
-            TalkboyKey(label: "FF", glyph: .fastForward, action: onFastForward)
-                .frame(maxWidth: .infinity)
-            TalkboyKey(label: "PLAY", glyph: .play, action: onPlay)
+            TalkboyKey(label: "PLAY", glyph: .play, action: onPlay, isActive: isPlaying)
                 .frame(maxWidth: .infinity)
             TalkboyKey(label: "STOP", glyph: .stop, action: onStop)
                 .frame(maxWidth: .infinity)
-            TalkboyKey(label: "RECORD", glyph: .none, action: onRecord, isRecord: true)
+            TalkboyKey(label: "FF", glyph: .fastForward, action: onFastForward)
+                .frame(maxWidth: .infinity)
+            TalkboyKey(label: "REC", glyph: .none, action: onRecord, isRecord: true, isActive: isRecording)
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 10)
@@ -40,6 +42,7 @@ private struct TalkboyKey: View {
     let glyph: Glyph
     let action: () -> Void
     var isRecord: Bool = false
+    var isActive: Bool = false
 
     @State private var pressed = false
 
@@ -103,6 +106,21 @@ private struct TalkboyKey: View {
                         keyGlyph
                             .foregroundColor(.white.opacity(0.95))
                             .shadow(color: .black.opacity(0.5), radius: 1, x: 0, y: 1)
+                    }
+
+                    // Active state glow (recording or playing)
+                    if isActive {
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(isRecord ? Color.red : Color.green, lineWidth: 2)
+                            .modifier(PulsingModifier())
+                    }
+
+                    // Pulsing red dot for Record button when recording
+                    if isRecord && isActive {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                            .modifier(PulsingModifier())
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -183,8 +201,12 @@ private struct Triangle: Shape {
 #Preview {
     ZStack {
         Color(hex: "D8D9DD")
-        TalkboyKeybedView(onRewind: {}, onPlay: {}, onStop: {}, onFastForward: {}, onRecord: {})
-            .padding()
+        TalkboyKeybedView(
+            isRecording: true,
+            isPlaying: false,
+            onRewind: {}, onPlay: {}, onStop: {}, onFastForward: {}, onRecord: {}
+        )
+        .padding()
     }
 }
 
