@@ -31,27 +31,32 @@ struct RecorderView: View {
             )
             .frame(height: 140)
 
-            // VU Meter
-            VUMeterView(level: audioService.audioLevel)
-                .frame(height: 30)
-                .padding(.horizontal, 40)
+            // Controls wrapped in GlassEffectContainer for proper morphing
+            GlassEffectContainer {
+                VStack(spacing: 16) {
+                    // VU Meter
+                    VUMeterView(level: audioService.audioLevel)
+                        .frame(height: 30)
+                        .padding(.horizontal, 40)
 
-            // Time display
-            TimeDisplayView(
-                currentTime: audioService.currentTime,
-                duration: audioService.isPlaying ? audioService.duration : nil,
-                isRecording: audioService.isRecording
-            )
+                    // Time display
+                    TimeDisplayView(
+                        currentTime: audioService.currentTime,
+                        duration: audioService.isPlaying ? audioService.duration : nil,
+                        isRecording: audioService.isRecording
+                    )
 
-            // Transport controls
-            TransportControlsView(
-                isPlaying: audioService.isPlaying,
-                isRecording: audioService.isRecording,
-                onRewind: { audioService.skipBackward() },
-                onFastForward: { audioService.skipForward() },
-                onPlay: handlePlay,
-                onStop: handleStop
-            )
+                    // Transport controls
+                    TransportControlsView(
+                        isPlaying: audioService.isPlaying,
+                        isRecording: audioService.isRecording,
+                        onRewind: { audioService.skipBackward() },
+                        onFastForward: { audioService.skipForward() },
+                        onPlay: handlePlay,
+                        onStop: handleStop
+                    )
+                }
+            }
 
             // Hold-to-record button
             HoldToRecordButton(

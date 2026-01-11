@@ -9,7 +9,7 @@ struct LibraryView: View {
     @State private var showingDetail = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if recordingStore.recordings.isEmpty {
                     EmptyLibraryView()

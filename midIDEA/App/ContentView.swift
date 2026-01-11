@@ -1,48 +1,33 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var showingLibrary = false
-
+    // Simple state to toggle between views for testing
+    @State private var useCartoonMode = true
+    
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [Color("BackgroundTop"), Color("BackgroundBottom")],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
+            if useCartoonMode {
+                TalkboyCartoonView()
+            } else {
+                TalkboyRealisticView()
+            }
+            
+            // Temporary Toggle Button
             VStack {
-                // Main cassette recorder view
-                RecorderView()
-
-                // Swipe up indicator for library
-                VStack(spacing: 4) {
-                    Image(systemName: "chevron.up")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("Recordings")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                HStack {
+                    Spacer()
+                    Button(action: { useCartoonMode.toggle() }) {
+                        Text(useCartoonMode ? "Switch to Realistic" : "Switch to Cartoon")
+                            .font(.caption)
+                            .padding(8)
+                            .background(.thinMaterial)
+                            .cornerRadius(8)
+                    }
+                    .padding()
                 }
-                .padding(.bottom, 8)
-                .onTapGesture {
-                    showingLibrary = true
-                }
+                Spacer()
             }
         }
-        .sheet(isPresented: $showingLibrary) {
-            LibraryView()
-        }
-        .gesture(
-            DragGesture()
-                .onEnded { value in
-                    if value.translation.height < -50 {
-                        showingLibrary = true
-                    }
-                }
-        )
     }
 }
 

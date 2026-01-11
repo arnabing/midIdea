@@ -33,10 +33,7 @@ struct TimeDisplayView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.black.opacity(0.8))
-        )
+        .glassEffect(.regular, in: .rect(cornerRadius: 8))
     }
 
     private func formatTime(_ time: TimeInterval) -> String {

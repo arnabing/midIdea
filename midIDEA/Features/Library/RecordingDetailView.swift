@@ -12,7 +12,7 @@ struct RecordingDetailView: View {
     @State private var isRetranscribing = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     // Header with cassette visual
@@ -137,10 +137,7 @@ struct RecordingDetailView: View {
                 }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color("ControlsBackground"))
-        )
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 
     // MARK: - Transcript Section
@@ -172,10 +169,7 @@ struct RecordingDetailView: View {
             transcriptContent
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color("ControlsBackground"))
-        )
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
     }
 
     @ViewBuilder
@@ -225,9 +219,7 @@ struct RecordingDetailView: View {
                 .font(.subheadline)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Color.black.opacity(0.8))
-                .foregroundColor(.white)
-                .cornerRadius(20)
+                .glassEffect(.regular, in: .capsule)
                 .padding(.bottom, 40)
         }
     }

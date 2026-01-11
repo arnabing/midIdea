@@ -23,6 +23,32 @@ class AudioService: NSObject, ObservableObject {
 
     static let maxRecordingDuration: TimeInterval = 30 * 60 // 30 minutes
 
+    // MARK: - Permissions
+
+    func requestMicrophonePermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            if #available(iOS 17.0, *) {
+                AVAudioApplication.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
+
+    func setupAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try session.setActive(true)
+        } catch {
+            print("Failed to setup audio session: \(error)")
+        }
+    }
+
     // MARK: - Recording
 
     func startRecording() throws -> URL {
@@ -130,6 +156,10 @@ class AudioService: NSObject, ObservableObject {
 
     func setPlaybackRate(_ rate: Float) {
         audioPlayer?.rate = rate
+    }
+
+    func setVolume(_ volume: Float) {
+        audioPlayer?.volume = volume
     }
 
     func skipForward(_ seconds: TimeInterval = 10) {

@@ -85,10 +85,7 @@ struct PlaybackSpeedView: View {
             }
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color("ControlsBackground"))
-        )
+        .glassEffect(.regular, in: .rect(cornerRadius: 12))
         .padding(.horizontal)
     }
 
@@ -113,9 +110,14 @@ struct SpeedPresetButton: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? Color.orange : Color("ButtonBackground"))
+                    Group {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color.orange)
+                        }
+                    }
                 )
+                .glassEffect(isSelected ? .clear : .regular.interactive(), in: .rect(cornerRadius: 6))
         }
         .buttonStyle(PlainButtonStyle())
     }
