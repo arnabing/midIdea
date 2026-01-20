@@ -3,10 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		06276F9F2F17434A00A6D44A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06276F9E2F17434A00A6D44A /* WidgetKit.framework */; };
+		06276FA12F17434A00A6D44A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06276FA02F17434A00A6D44A /* SwiftUI.framework */; };
+		06276FB22F17434B00A6D44A /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A1000001001 /* midIDEAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000 /* midIDEAApp.swift */; };
 		A1000002001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000 /* ContentView.swift */; };
 		A1000003001 /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003000 /* Recording.swift */; };
@@ -40,9 +43,52 @@
 		A1000031001 /* TalkboyRealisticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031000 /* TalkboyRealisticView.swift */; };
 		A1000032001 /* TalkboyCartoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000032000 /* TalkboyCartoonView.swift */; };
 		A1000033001 /* CartoonCassetteReel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000033000 /* CartoonCassetteReel.swift */; };
+		A1000034001 /* DynamicIslandGlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000034000 /* DynamicIslandGlow.swift */; };
+		A1000035001 /* MinimalRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035000 /* MinimalRecorderView.swift */; };
+		A1000036001 /* MinimalWaveformBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036000 /* MinimalWaveformBar.swift */; };
+		A1000037001 /* MinimalRecordingsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000037000 /* MinimalRecordingsList.swift */; };
+		A1000038001 /* ActionButtonOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000038000 /* ActionButtonOnboardingView.swift */; };
+		A1000039001 /* LiquidAudioVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000039000 /* LiquidAudioVisualizer.swift */; };
+		A100003A001 /* RecordingActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003A000 /* RecordingActivityAttributes.swift */; };
+		A100003B001 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003B000 /* LiveActivityManager.swift */; };
+		A100003C001 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003C000 /* AIService.swift */; };
+		A100003D001 /* Font+Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003D000 /* Font+Typography.swift */; };
+		A100003E001 /* CompletedRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003E000 /* CompletedRecordingView.swift */; };
+		A100003F001 /* MainContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003F000 /* MainContainerView.swift */; };
+		A1000041001 /* SidebarRecordingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000041000 /* SidebarRecordingRow.swift */; };
+		A1000042001 /* TranscriptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042000 /* TranscriptDetailView.swift */; };
+		A1000043001 /* TranscriptBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000043000 /* TranscriptBubbleView.swift */; };
+		A1000044001 /* MediaPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000044000 /* MediaPlayerBar.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		06276FB02F17434B00A6D44A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000P0000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 06276F9B2F17434A00A6D44A;
+			remoteInfo = RecordingWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		06276FB32F17434B00A6D44A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				/* Widget temporarily disabled for simulator debugging */
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RecordingWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		06276F9E2F17434A00A6D44A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		06276FA02F17434A00A6D44A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		A1000000000 /* midIDEA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = midIDEA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000001000 /* midIDEAApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = midIDEAApp.swift; sourceTree = "<group>"; };
 		A1000002000 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -79,9 +125,48 @@
 		A1000031000 /* TalkboyRealisticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyRealisticView.swift; sourceTree = "<group>"; };
 		A1000032000 /* TalkboyCartoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyCartoonView.swift; sourceTree = "<group>"; };
 		A1000033000 /* CartoonCassetteReel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartoonCassetteReel.swift; sourceTree = "<group>"; };
+		A1000034000 /* DynamicIslandGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandGlow.swift; sourceTree = "<group>"; };
+		A1000035000 /* MinimalRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalRecorderView.swift; sourceTree = "<group>"; };
+		A1000036000 /* MinimalWaveformBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalWaveformBar.swift; sourceTree = "<group>"; };
+		A1000037000 /* MinimalRecordingsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalRecordingsList.swift; sourceTree = "<group>"; };
+		A1000038000 /* ActionButtonOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonOnboardingView.swift; sourceTree = "<group>"; };
+		A1000039000 /* LiquidAudioVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidAudioVisualizer.swift; sourceTree = "<group>"; };
+		A100003A000 /* RecordingActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingActivityAttributes.swift; sourceTree = "<group>"; };
+		A100003B000 /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		A100003C000 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		A100003D000 /* Font+Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Typography.swift"; sourceTree = "<group>"; };
+		A100003E000 /* CompletedRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedRecordingView.swift; sourceTree = "<group>"; };
+		A100003F000 /* MainContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContainerView.swift; sourceTree = "<group>"; };
+		A1000041000 /* SidebarRecordingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarRecordingRow.swift; sourceTree = "<group>"; };
+		A1000042000 /* TranscriptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptDetailView.swift; sourceTree = "<group>"; };
+		A1000043000 /* TranscriptBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptBubbleView.swift; sourceTree = "<group>"; };
+		A1000044000 /* MediaPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerBar.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		06276FB62F17434B00A6D44A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 06276F9B2F17434A00A6D44A /* RecordingWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		06276FA22F17434A00A6D44A /* RecordingWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (06276FB62F17434B00A6D44A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = RecordingWidget; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		06276F992F17434A00A6D44A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06276FA12F17434A00A6D44A /* SwiftUI.framework in Frameworks */,
+				06276F9F2F17434A00A6D44A /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000F0000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -92,10 +177,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		06276F9D2F17434A00A6D44A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				06276F9E2F17434A00A6D44A /* WidgetKit.framework */,
+				06276FA02F17434A00A6D44A /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A10000G0000 = {
 			isa = PBXGroup;
 			children = (
 				A10000G1000 /* midIDEA */,
+				06276FA22F17434A00A6D44A /* RecordingWidget */,
+				06276F9D2F17434A00A6D44A /* Frameworks */,
 				A10000G2000 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -109,6 +205,7 @@
 				A10000G8000 /* Models */,
 				A10000G9000 /* Intents */,
 				A10000GA000 /* Extensions */,
+				A10000GD000 /* LiveActivity */,
 				A10000GB000 /* Resources */,
 				A1000020000 /* Info.plist */,
 				A1000021000 /* midIDEA.entitlements */,
@@ -120,6 +217,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000000000 /* midIDEA.app */,
+				06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -136,10 +234,32 @@
 		A10000G4000 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				A10000GE000 /* Main */,
+				A10000GF000 /* Detail */,
 				A10000G5000 /* Recorder */,
 				A10000G6000 /* Library */,
+				A10000GC000 /* Minimal */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		A10000GE000 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				A100003F000 /* MainContainerView.swift */,
+				A1000041000 /* SidebarRecordingRow.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		A10000GF000 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				A1000042000 /* TranscriptDetailView.swift */,
+				A1000043000 /* TranscriptBubbleView.swift */,
+				A1000044000 /* MediaPlayerBar.swift */,
+			);
+			path = Detail;
 			sourceTree = "<group>";
 		};
 		A10000G5000 /* Recorder */ = {
@@ -182,6 +302,7 @@
 		A10000G7000 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				A100003C000 /* AIService.swift */,
 				A1000005000 /* AudioService.swift */,
 				A1000006000 /* HapticService.swift */,
 				A1000007000 /* TranscriptionService.swift */,
@@ -210,6 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000018000 /* Color+Theme.swift */,
+				A100003D000 /* Font+Typography.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -222,9 +344,54 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		A10000GC000 /* Minimal */ = {
+			isa = PBXGroup;
+			children = (
+				A100003E000 /* CompletedRecordingView.swift */,
+				A1000034000 /* DynamicIslandGlow.swift */,
+				A1000039000 /* LiquidAudioVisualizer.swift */,
+				A1000035000 /* MinimalRecorderView.swift */,
+				A1000036000 /* MinimalWaveformBar.swift */,
+				A1000037000 /* MinimalRecordingsList.swift */,
+				A1000038000 /* ActionButtonOnboardingView.swift */,
+			);
+			path = Minimal;
+			sourceTree = "<group>";
+		};
+		A10000GD000 /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				A100003A000 /* RecordingActivityAttributes.swift */,
+				A100003B000 /* LiveActivityManager.swift */,
+			);
+			path = LiveActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		06276F9B2F17434A00A6D44A /* RecordingWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06276FB72F17434B00A6D44A /* Build configuration list for PBXNativeTarget "RecordingWidgetExtension" */;
+			buildPhases = (
+				06276F982F17434A00A6D44A /* Sources */,
+				06276F992F17434A00A6D44A /* Frameworks */,
+				06276F9A2F17434A00A6D44A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				06276FA22F17434A00A6D44A /* RecordingWidget */,
+			);
+			name = RecordingWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = RecordingWidgetExtension;
+			productReference = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A10000N0000 /* midIDEA */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A10000C0000 /* Build configuration list for PBXNativeTarget "midIDEA" */;
@@ -232,10 +399,12 @@
 				A10000S0000 /* Sources */,
 				A10000F0000 /* Frameworks */,
 				A10000R0000 /* Resources */,
+				06276FB32F17434B00A6D44A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				06276FB12F17434B00A6D44A /* PBXTargetDependency */,
 			);
 			name = midIDEA;
 			productName = midIDEA;
@@ -249,9 +418,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					06276F9B2F17434A00A6D44A = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					A10000N0000 = {
 						CreatedOnToolsVersion = 15.0;
 					};
@@ -271,11 +443,19 @@
 			projectRoot = "";
 			targets = (
 				A10000N0000 /* midIDEA */,
+				06276F9B2F17434A00A6D44A /* RecordingWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		06276F9A2F17434A00A6D44A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000R0000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -287,6 +467,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		06276F982F17434A00A6D44A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000S0000 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,12 +510,96 @@
 				A1000031001 /* TalkboyRealisticView.swift in Sources */,
 				A1000032001 /* TalkboyCartoonView.swift in Sources */,
 				A1000033001 /* CartoonCassetteReel.swift in Sources */,
+				A1000034001 /* DynamicIslandGlow.swift in Sources */,
+				A1000035001 /* MinimalRecorderView.swift in Sources */,
+				A1000036001 /* MinimalWaveformBar.swift in Sources */,
+				A1000037001 /* MinimalRecordingsList.swift in Sources */,
+				A1000038001 /* ActionButtonOnboardingView.swift in Sources */,
+				A1000039001 /* LiquidAudioVisualizer.swift in Sources */,
+				A100003A001 /* RecordingActivityAttributes.swift in Sources */,
+				A100003B001 /* LiveActivityManager.swift in Sources */,
+				A100003C001 /* AIService.swift in Sources */,
+				A100003D001 /* Font+Typography.swift in Sources */,
+				A100003E001 /* CompletedRecordingView.swift in Sources */,
+				A100003F001 /* MainContainerView.swift in Sources */,
+				A1000041001 /* SidebarRecordingRow.swift in Sources */,
+				A1000042001 /* TranscriptDetailView.swift in Sources */,
+				A1000043001 /* TranscriptBubbleView.swift in Sources */,
+				A1000044001 /* MediaPlayerBar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		06276FB12F17434B00A6D44A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 06276F9B2F17434A00A6D44A /* RecordingWidgetExtension */;
+			targetProxy = 06276FB02F17434B00A6D44A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		06276FB42F17434B00A6D44A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecordingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RecordingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mididea.app.RecordingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		06276FB52F17434B00A6D44A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecordingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RecordingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mididea.app.RecordingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		A10000B0000 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -347,7 +618,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				// Use midIDEA/Info.plist for supported orientations.
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -379,7 +649,6 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				// Use midIDEA/Info.plist for supported orientations.
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -519,6 +788,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		06276FB72F17434B00A6D44A /* Build configuration list for PBXNativeTarget "RecordingWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06276FB42F17434B00A6D44A /* Debug */,
+				06276FB52F17434B00A6D44A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A10000C0000 /* Build configuration list for PBXNativeTarget "midIDEA" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

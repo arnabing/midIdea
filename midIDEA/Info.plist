@@ -24,8 +24,12 @@
 	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>midIDEA needs microphone access to record voice notes.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>midIDEA uses motion to make the visualizer respond to how you hold your device.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>midIDEA uses speech recognition to transcribe your voice notes.</string>
 	<key>UIBackgroundModes</key>
@@ -40,11 +44,14 @@
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

@@ -40,8 +40,8 @@ struct TalkboyRealisticView: View {
                 
                 let s_heightLimit = maxHeight - keybedHeight
                 
-                // Width calculation with even wider body (75% wider than content)
-                let bodyMultiplier: CGFloat = 1.75
+                // Width calculation - content fills ~87% of body width
+                let bodyMultiplier: CGFloat = 1.15
                 
                 // Total Width = Left Attachment + Body
                 // Left Attachment W = (s + K) * 0.45

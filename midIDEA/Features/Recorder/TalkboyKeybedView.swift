@@ -55,11 +55,7 @@ private struct TalkboyKey: View {
                 .minimumScaleFactor(0.65)
                 .allowsTightening(true)
 
-            Button(action: {
-                HapticService.shared.playButtonPress()
-                action()
-            }) {
-                ZStack {
+            ZStack {
                     // Button base with gradient
                     RoundedRectangle(cornerRadius: 7)
                         .fill(
@@ -122,18 +118,30 @@ private struct TalkboyKey: View {
                             .frame(width: 8, height: 8)
                             .modifier(PulsingModifier())
                     }
+                    // Press highlight glow
+                    if pressed {
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(Color.white.opacity(0.2))
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 42)
                 .scaleEffect(pressed ? 0.96 : 1.0)
                 .animation(.easeInOut(duration: 0.08), value: pressed)
-            }
-            .buttonStyle(.plain)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in pressed = true }
-                    .onEnded { _ in pressed = false }
-            )
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if !pressed {
+                                pressed = true
+                                HapticService.shared.playButtonPress()
+                            }
+                        }
+                        .onEnded { _ in
+                            pressed = false
+                            action()
+                        }
+                )
         }
     }
 

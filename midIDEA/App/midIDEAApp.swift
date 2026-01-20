@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import AppIntents
 
 @main
 struct midIDEAApp: App {
@@ -8,6 +9,7 @@ struct midIDEAApp: App {
 
     init() {
         configureAudioSession()
+        registerAppShortcuts()
     }
 
     var body: some Scene {
@@ -25,6 +27,14 @@ struct midIDEAApp: App {
             try session.setActive(true)
         } catch {
             print("Failed to configure audio session: \(error)")
+        }
+    }
+
+    /// Register App Shortcuts with the system for Siri, Spotlight, and Action Button
+    private func registerAppShortcuts() {
+        if #available(iOS 17.0, *) {
+            midIDEAShortcuts.updateAppShortcutParameters()
+            print("App Shortcuts registered successfully")
         }
     }
 }

@@ -58,7 +58,7 @@ struct TalkboyView: View {
                 
                 let calculatedTotalHeight = faceplateSize + keybedHeight
                 let contentWidth = faceplateSize
-                let bodyWidth = contentWidth * 1.25 // Wider body
+                let bodyWidth = contentWidth * 1.15 // Content fills ~87% of body
                 
                 HStack(spacing: -2) { // Negative spacing for seamless merge
                     // LEFT: Speaker Attachment

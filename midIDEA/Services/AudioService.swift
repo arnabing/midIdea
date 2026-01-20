@@ -19,6 +19,13 @@ class AudioService: NSObject, ObservableObject {
     private var playbackTimer: Timer?
     private var currentRecordingURL: URL?
 
+    // MARK: - Silence Detection
+
+    private var silenceStartTime: Date?
+    private let silenceThreshold: Float = -45.0  // dB level considered silence
+    var silenceDuration: TimeInterval = 15.0     // Seconds of silence before auto-stop
+    var onSilenceAutoStop: (() -> Void)?         // Callback when silence triggers stop
+
     // MARK: - Constants
 
     static let maxRecordingDuration: TimeInterval = 30 * 60 // 30 minutes
@@ -70,9 +77,13 @@ class AudioService: NSObject, ObservableObject {
 
         isRecording = true
         currentTime = 0
+        silenceStartTime = nil  // Reset silence detection
 
         startMeteringTimer()
         playRecordStartSound()
+
+        // Start Live Activity for Dynamic Island
+        LiveActivityManager.shared.startRecordingActivity()
 
         return url
     }
@@ -89,6 +100,9 @@ class AudioService: NSObject, ObservableObject {
 
         playRecordStopSound()
 
+        // End Live Activity
+        LiveActivityManager.shared.endRecordingActivity()
+
         if let url = currentRecordingURL {
             return (url, duration)
         }
@@ -102,6 +116,9 @@ class AudioService: NSObject, ObservableObject {
         stopMeteringTimer()
         isRecording = false
         audioLevel = 0
+
+        // End Live Activity
+        LiveActivityManager.shared.endRecordingActivity()
 
         // Delete the cancelled recording file
         if let url = currentRecordingURL {
@@ -211,9 +228,28 @@ class AudioService: NSObject, ObservableObject {
         audioLevel = recorder.averagePower(forChannel: 0)
         currentTime = recorder.currentTime
 
+        // Update Live Activity with audio level
+        LiveActivityManager.shared.setAudioLevel(audioLevel)
+
         // Check max duration
         if currentTime >= Self.maxRecordingDuration {
             _ = stopRecording()
+        }
+
+        // Silence detection
+        if audioLevel < silenceThreshold {
+            // Audio is below threshold (silence)
+            if silenceStartTime == nil {
+                silenceStartTime = Date()
+            } else if let startTime = silenceStartTime,
+                      Date().timeIntervalSince(startTime) >= silenceDuration {
+                // Silence duration exceeded - trigger auto-stop
+                silenceStartTime = nil
+                onSilenceAutoStop?()
+            }
+        } else {
+            // Sound detected - reset silence timer
+            silenceStartTime = nil
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Recording: Identifiable, Codable {
+struct Recording: Identifiable, Codable, Hashable {
     let id: UUID
     let createdAt: Date
     var duration: TimeInterval
@@ -8,13 +8,23 @@ struct Recording: Identifiable, Codable {
     var transcript: String?
     var transcriptionStatus: TranscriptionStatus
 
+    // Apple Intelligence generated insights
+    var aiSummary: String?
+    var aiKeyPoints: [String]?
+
+    // Session linking for resume functionality
+    var sessionId: UUID?
+
     init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
         duration: TimeInterval = 0,
         audioFileName: String,
         transcript: String? = nil,
-        transcriptionStatus: TranscriptionStatus = .pending
+        transcriptionStatus: TranscriptionStatus = .pending,
+        aiSummary: String? = nil,
+        aiKeyPoints: [String]? = nil,
+        sessionId: UUID? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -22,6 +32,9 @@ struct Recording: Identifiable, Codable {
         self.audioFileName = audioFileName
         self.transcript = transcript
         self.transcriptionStatus = transcriptionStatus
+        self.aiSummary = aiSummary
+        self.aiKeyPoints = aiKeyPoints
+        self.sessionId = sessionId
     }
 
     var audioURL: URL {
@@ -39,6 +52,23 @@ struct Recording: Identifiable, Codable {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    var formattedDuration: String {
+        durationFormatted
+    }
+
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: createdAt)
+    }
+
+    /// Convenience accessor for AI summary
+    var summary: String? {
+        get { aiSummary }
+        set { aiSummary = newValue }
     }
 
     static var recordingsDirectory: URL {
