@@ -162,6 +162,9 @@ struct RecordingRootView: View {
     // Glass effect namespace
     @Namespace private var buttonNamespace
 
+    // Visual style for experimenting (3-finger tap to cycle)
+    @State private var visualStyle: VisualizerStyle = .liquidOcean
+
     private let prompts = [
         "What do you want to talk about?",
         "Tell me more about it...",
@@ -179,7 +182,8 @@ struct RecordingRootView: View {
             LiquidAudioVisualizer(
                 audioLevel: audioService.audioLevel,
                 isRecording: audioService.isRecording,
-                isIdle: !audioService.isRecording
+                isIdle: !audioService.isRecording,
+                visualStyle: visualStyle
             )
             .allowsHitTesting(false)
 
@@ -233,6 +237,23 @@ struct RecordingRootView: View {
         .navigationBarHidden(true)
         .onAppear { startPromptRotation() }
         .onDisappear { promptTimer?.invalidate() }
+        .contentShape(Rectangle())  // Make entire area respond to gestures
+        .simultaneousGesture(
+            TapGesture(count: 3)
+                .onEnded { _ in
+                    // Toggle between visual styles: Ocean ↔ Plasma
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        switch visualStyle {
+                        case .liquidOcean:
+                            visualStyle = .plasmaPulse
+                        case .plasmaPulse:
+                            visualStyle = .liquidOcean
+                        }
+                    }
+                    // Haptic feedback
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+        )
     }
 
     private func startPromptRotation() {

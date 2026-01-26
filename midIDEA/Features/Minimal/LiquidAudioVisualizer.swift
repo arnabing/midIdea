@@ -14,26 +14,140 @@ enum VisualizerColorMode: String, CaseIterable {
     case aurora = "Aurora"
 }
 
-// MARK: - Render State (Reference Type for 120Hz Physics)
+// MARK: - Visual Style
 
-/// Reference type for frame-by-frame physics calculations.
-/// Using a class avoids triggering SwiftUI View rebuilds on every frame.
-private class RenderState {
-    var smoothedLevel: Float = 0
-    var previousLevel: Float = 0
-    var peakIntensity: Float = 0
+enum VisualizerStyle: String, CaseIterable {
+    case liquidOcean = "Liquid Ocean"       // Smooth ocean waves
+    case plasmaPulse = "Plasma Pulse"       // High contrast dramatic
+}
+
+// MARK: - Cached Color Palettes (Pre-computed, not per-frame)
+
+private enum CachedColors {
+    // Ocean palette - computed once at launch
+    static let ocean: [Color] = [
+        Color(hex: "FFFEF5"), Color(hex: "FFFDF0"), Color(hex: "FFFEF5"), Color(hex: "FFFDF0"),
+        Color(hex: "E0FFFF"), Color(hex: "B0E0E6"), Color(hex: "AFEEEE"), Color(hex: "E0FFFF"),
+        Color(hex: "40E0D0"), Color(hex: "00CED1"), Color(hex: "20B2AA"), Color(hex: "48D1CC"),
+        Color(hex: "0077B6"), Color(hex: "0096C7"), Color(hex: "00B4D8"), Color(hex: "0077B6")
+    ]
+    static let oceanOpacities: [Double] = [
+        0.95, 0.95, 0.95, 0.95,
+        0.90, 0.90, 0.90, 0.90,
+        0.85, 0.85, 0.85, 0.85,
+        0.90, 0.90, 0.90, 0.90
+    ]
+
+    // Cool blues palette
+    static let coolBlues: [Color] = [
+        Color(hex: "667eea"), Color(hex: "764ba2"), Color(hex: "6B8DD6"), Color(hex: "667eea"),
+        Color(hex: "764ba2"), Color(hex: "8E37D7"), Color(hex: "00d2d3"), Color(hex: "764ba2"),
+        Color(hex: "6B8DD6"), Color(hex: "00d2d3"), Color(hex: "5f27cd"), Color(hex: "6B8DD6"),
+        Color(hex: "667eea"), Color(hex: "764ba2"), Color(hex: "6B8DD6"), Color(hex: "667eea")
+    ]
+    static let coolWarm: [Color] = [
+        Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff4757"), Color(hex: "ff6b6b"),
+        Color(hex: "ffa502"), Color(hex: "ff6348"), Color(hex: "ffc048"), Color(hex: "ffa502"),
+        Color(hex: "ff4757"), Color(hex: "ffc048"), Color(hex: "ee5a24"), Color(hex: "ff4757"),
+        Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff4757"), Color(hex: "ff6b6b")
+    ]
+    static let coolOpacities: [Double] = [
+        0.3, 0.5, 0.5, 0.3,
+        0.5, 0.7, 0.7, 0.5,
+        0.5, 0.7, 0.7, 0.5,
+        0.3, 0.5, 0.5, 0.3
+    ]
+
+    // Sunset palette
+    static let sunset: [Color] = [
+        Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff9ff3"), Color(hex: "ff6b6b"),
+        Color(hex: "ffa502"), Color(hex: "ee5a24"), Color(hex: "ff4757"), Color(hex: "ffa502"),
+        Color(hex: "ff9ff3"), Color(hex: "ff4757"), Color(hex: "c44569"), Color(hex: "ff9ff3"),
+        Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff9ff3"), Color(hex: "ff6b6b")
+    ]
+
+    // Plasma pulse - high contrast
+    static let plasma: [Color] = [
+        Color(hex: "FF0080"), Color(hex: "7928CA"), Color(hex: "FF0080"), Color(hex: "7928CA"),
+        Color(hex: "FF4D4D"), Color(hex: "F97316"), Color(hex: "FACC15"), Color(hex: "4ADE80"),
+        Color(hex: "0EA5E9"), Color(hex: "8B5CF6"), Color(hex: "EC4899"), Color(hex: "F43F5E"),
+        Color(hex: "7928CA"), Color(hex: "FF0080"), Color(hex: "7928CA"), Color(hex: "FF0080")
+    ]
+}
+
+// MARK: - Audio Interpolator (Smooth 20Hz→120Hz)
+
+/// Interpolates between audio samples for smooth 120Hz rendering from 20Hz data.
+/// Uses smoothstep interpolation and physics-based smoothing.
+private final class AudioInterpolator: ObservableObject {
+    // Sample buffer
+    private var previousSample: Float = 0
+    private var currentSample: Float = 0
+    private var lastUpdateTime: TimeInterval = 0
+    private let sampleInterval: TimeInterval = 0.05  // 20Hz from AudioService
+
+    // Physics state
+    private var smoothedLevel: Float = 0
+    private var previousSmoothed: Float = 0
+    private var peakIntensity: Float = 0
+
+    /// Called when new audio sample arrives (20Hz)
+    func updateSample(_ normalizedLevel: Float) {
+        previousSample = currentSample
+        currentSample = normalizedLevel
+        lastUpdateTime = CACurrentMediaTime()
+    }
+
+    /// Called every render frame (120Hz) - returns interpolated & smoothed values
+    func getPhysics(at time: TimeInterval) -> (smoothed: Float, peak: Float) {
+        // Use CACurrentMediaTime to match updateSample's time source
+        // (context.date uses different epoch, causing flickering)
+        let now = CACurrentMediaTime()
+        let elapsed = now - lastUpdateTime
+        let t = Float(min(max(elapsed / sampleInterval, 0), 1.0))
+        let eased = t * t * (3 - 2 * t)  // Smoothstep for natural motion
+        let interpolatedLevel = previousSample + (currentSample - previousSample) * eased
+
+        // Apply physics smoothing on top of interpolation
+        let smoothingFactor: Float = 0.18
+        smoothedLevel += (interpolatedLevel - smoothedLevel) * smoothingFactor
+
+        // Peak detection with decay
+        let delta = smoothedLevel - previousSmoothed
+        peakIntensity *= 0.88  // Decay
+        if delta > 0.05 {
+            peakIntensity = min(1.0, peakIntensity + delta * 3.0)
+        }
+        previousSmoothed = smoothedLevel
+
+        return (smoothedLevel, peakIntensity)
+    }
+
+    /// Reset state (e.g., when recording stops)
+    func reset() {
+        previousSample = 0
+        currentSample = 0
+        smoothedLevel = 0
+        previousSmoothed = 0
+        peakIntensity = 0
+    }
 }
 
 /// GPU-accelerated liquid visualizer using MeshGradient.
-/// Renders at 120Hz on ProMotion displays with minimal CPU usage.
+/// Renders at 120Hz on ProMotion displays with smooth audio interpolation.
+/// Supports multiple visual styles, all voice-reactive.
 struct LiquidAudioVisualizer: View {
     let audioLevel: Float  // -60 to 0 dB
     let isRecording: Bool
     let isIdle: Bool
     var colorMode: VisualizerColorMode = .ocean
+    var visualStyle: VisualizerStyle = .liquidOcean
 
-    // Reference type for physics state (doesn't trigger View rebuilds)
-    @State private var renderState = RenderState()
+    // Audio interpolator for smooth 20Hz→120Hz rendering
+    @State private var interpolator = AudioInterpolator()
+
+    // State-based ambient animation (only used by Siri Glow and Plasma styles)
+    @State private var animationPhase = false
 
     // Normalized raw audio level (0 to 1)
     private var normalizedLevel: Float {
@@ -41,87 +155,111 @@ struct LiquidAudioVisualizer: View {
         return (clamped + 60) / 60
     }
 
-    // MARK: - Physics Calculation
-
-    /// Calculate smoothed level and peak intensity for current frame.
-    /// Mutates RenderState class directly (safe - doesn't trigger View rebuilds).
-    private func calculatePhysics(targetLevel: Float) -> (smoothed: Float, peak: Float) {
-        // 1. Smooth the raw audio level - AGGRESSIVE: more responsive
-        let smoothingFactor: Float = 0.18  // was 0.12
-        let newSmoothed = renderState.smoothedLevel + (targetLevel - renderState.smoothedLevel) * smoothingFactor
-
-        // 2. Calculate peak intensity (spikes on sudden volume, then decays)
-        let delta = newSmoothed - renderState.previousLevel
-        let decayRate: Float = 0.88  // was 0.92 - faster decay for snappier feel
-
-        var newPeak = renderState.peakIntensity * decayRate
-        if delta > 0.05 {  // AGGRESSIVE: was 0.15 - trigger on normal speech
-            newPeak = min(1.0, newPeak + delta * 3.0)  // was delta * 2.0
-        }
-
-        // 3. Update state (safe because RenderState is a class)
-        renderState.previousLevel = renderState.smoothedLevel
-        renderState.smoothedLevel = newSmoothed
-        renderState.peakIntensity = newPeak
-
-        return (newSmoothed, newPeak)
-    }
-
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // Layer 1: MeshGradient (GPU-rendered at 120Hz on ProMotion)
+                // Main MeshGradient with voice reactivity
                 TimelineView(.animation) { context in
                     let time = context.date.timeIntervalSinceReferenceDate
+                    let physics = interpolator.getPhysics(at: time)
 
-                    // Calculate physics synchronously (fast, no SwiftUI overhead)
-                    let physics = calculatePhysics(targetLevel: normalizedLevel)
-
-                    MeshGradient(
-                        width: 4,
-                        height: 4,
-                        points: meshPoints(time: time, smoothed: physics.smoothed, peak: physics.peak),
-                        colors: meshColors(time: time, smoothed: physics.smoothed)
-                    )
-                    .blur(radius: 0)  // v3: Zero blur for sharp color bands like reference
-                    .saturation(1.2)
+                    meshGradientView(time: time, physics: physics)
                 }
-                .drawingGroup()  // Force Metal/GPU rendering
+                // Note: Removed .drawingGroup() - MeshGradient is already GPU-accelerated
+                // and drawingGroup can cause frame sync flickering with TimelineView
 
-                // Layer 2: Film grain noise for texture
+                // Film grain noise for texture (using faster blend mode)
                 NoiseTextureView()
-                    .opacity(0.025)  // Very subtle - CIRandomGenerator is high contrast
-                    .blendMode(.overlay)
+                    .opacity(0.02)
+                    .blendMode(.plusLighter)  // Faster than .overlay
                     .allowsHitTesting(false)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea()
+        .onChange(of: audioLevel) { _, _ in
+            // Feed new audio sample to interpolator
+            interpolator.updateSample(normalizedLevel)
+        }
+        .onChange(of: isRecording) { _, recording in
+            if !recording {
+                interpolator.reset()
+            }
+        }
+        .onAppear {
+            // Start ambient animation only for styles that use it (Siri Glow, Plasma Pulse)
+            // liquidOcean doesn't use animationPhase - all motion is time-based
+            if visualStyle != .liquidOcean {
+                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+                    animationPhase = true
+                }
+            }
+        }
+        .onChange(of: visualStyle) { _, newStyle in
+            // Start/stop ambient animation when switching styles
+            if newStyle != .liquidOcean && !animationPhase {
+                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+                    animationPhase = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Mesh Gradient View (Style-based)
+
+    @ViewBuilder
+    private func meshGradientView(time: Double, physics: (smoothed: Float, peak: Float)) -> some View {
+        // Note: Brightness is now baked into colors to avoid recompositing flicker
+        // from the .brightness() modifier changing every frame
+
+        switch visualStyle {
+        case .liquidOcean:
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: meshPoints(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                colors: meshColors(time: time, smoothed: physics.smoothed),
+                smoothsColors: true
+            )
+            .saturation(1.2)
+
+        case .plasmaPulse:
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: plasmaPoints(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                colors: plasmaColors(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                smoothsColors: true
+            )
+            .saturation(1.5)
+        }
     }
 
     // MARK: - Mesh Points (Voice-Driven Animation + Peak Explosion)
 
     /// 4x4 grid = 16 points. Creates horizontal wave bands like reference animation.
     /// Audio amplifies wave height - baseline smooth waves always visible, voice makes waves bigger.
+    /// IMPORTANT: Points are clamped to prevent row crossover which causes visible seams/lines.
     private func meshPoints(time: Double, smoothed: Float, peak: Float) -> [SIMD2<Float>] {
         let audio = Double(smoothed)
-        let baseSpeed: Double = 0.08  // v3: SLOWER - elegant flow like reference
+        let baseSpeed: Double = 0.08  // Slow, elegant flow
         let t = time * baseSpeed
 
-        // v3: HUGE amplitude - visible waves like reference
-        let baseAmp: Float = 0.25  // was 0.12 - massive baseline waves always visible
-        let audioAmp: Float = Float(audio * 0.35)  // voice amplifies further
-        let amp: Float = baseAmp + audioAmp
+        // Reduced amplitude to prevent row crossover (was causing flickering seams)
+        // Row 1 range: [0.18, 0.48], Row 2 range: [0.52, 0.82] - no overlap possible
+        let baseAmp: Float = 0.08  // Reduced from 0.25
+        let audioAmp: Float = Float(audio * 0.12)  // Reduced from 0.5
+        let amp: Float = baseAmp + audioAmp  // Max total: 0.20
 
-        // v3: Gentler explosion for this style
-        let explosion = peak * 0.15  // was 0.35 - less jarring
+        // Peak explosion - clamped to prevent points leaving bounds
+        let explosion = min(peak * 0.15, 0.12)  // Capped at 0.12
 
-        // Wave function for vertical (Y) movement only - creates horizontal bands
+        // Wave function for vertical (Y) movement only
         func wave(_ phase: Double, _ intensity: Float) -> Float {
             Float(sin(t + phase) * Double(amp * intensity))
         }
 
-        // Radial offset from center (0.5, 0.5) for explosion effect
+        // Radial offset from center for explosion effect (clamped)
         func radialPush(_ x: Float, _ y: Float) -> SIMD2<Float> {
             let dx = x - 0.5
             let dy = y - 0.5
@@ -129,12 +267,25 @@ struct LiquidAudioVisualizer: View {
             guard dist > 0.001 else { return SIMD2(x, y) }
             let pushX = (dx / dist) * explosion
             let pushY = (dy / dist) * explosion
-            return SIMD2(x + pushX, y + pushY)
+            // Clamp to valid mesh range with margin
+            let newX = max(0.02, min(0.98, x + pushX))
+            let newY = max(0.02, min(0.98, y + pushY))
+            return SIMD2(newX, newY)
         }
 
-        // 4x4 grid layout for HORIZONTAL WAVE BANDS:
-        // Each row moves together vertically (Y only) to create rippling horizontal stripes
-        // Rows have different phases so bands undulate at different times
+        // Row Y positions with safe margins to prevent crossover
+        // Row 0: 0.0 (fixed)
+        // Row 1: 0.33 ± 0.15 max → range [0.18, 0.48]
+        // Row 2: 0.66 ± 0.15 max → range [0.51, 0.81]
+        // Row 3: 1.0 (fixed)
+
+        // Clamp row Y to prevent crossing into adjacent rows
+        func clampRow1(_ y: Float) -> Float {
+            max(0.12, min(0.48, y))  // Can't go below 0.12 or above 0.48
+        }
+        func clampRow2(_ y: Float) -> Float {
+            max(0.52, min(0.88, y))  // Can't go below 0.52 or above 0.88
+        }
 
         let basePoints: [(Float, Float)] = [
             // Row 0 (top) - fixed at top edge
@@ -143,17 +294,17 @@ struct LiquidAudioVisualizer: View {
             (0.66, 0),
             (1, 0),
 
-            // Row 1 - moves as a horizontal band (same Y offset across row)
-            (0, 0.33 + wave(0, 0.5)),
-            (0.33, 0.33 + wave(0, 0.6)),
-            (0.66, 0.33 + wave(0, 0.6)),
-            (1, 0.33 + wave(0, 0.5)),
+            // Row 1 - moves as a horizontal band (clamped to prevent crossover)
+            (0, clampRow1(0.33 + wave(0, 0.8))),
+            (0.33, clampRow1(0.33 + wave(0, 1.0))),
+            (0.66, clampRow1(0.33 + wave(0, 1.0))),
+            (1, clampRow1(0.33 + wave(0, 0.8))),
 
-            // Row 2 - moves as a horizontal band (different phase)
-            (0, 0.66 + wave(1.5, 0.6)),
-            (0.33, 0.66 + wave(1.5, 0.7)),
-            (0.66, 0.66 + wave(1.5, 0.7)),
-            (1, 0.66 + wave(1.5, 0.6)),
+            // Row 2 - moves as a horizontal band (different phase, clamped)
+            (0, clampRow2(0.66 + wave(1.5, 0.8))),
+            (0.33, clampRow2(0.66 + wave(1.5, 1.0))),
+            (0.66, clampRow2(0.66 + wave(1.5, 1.0))),
+            (1, clampRow2(0.66 + wave(1.5, 0.8))),
 
             // Row 3 (bottom) - fixed at bottom edge
             (0, 1),
@@ -169,6 +320,98 @@ struct LiquidAudioVisualizer: View {
                 return radialPush(point.0, point.1)
             }
             return SIMD2(point.0, point.1)
+        }
+    }
+
+    // MARK: - Plasma Pulse Points (High Contrast Dramatic)
+
+    /// Dramatic mesh distortion with aggressive peak response.
+    /// Uses clamping to prevent row crossover and mesh artifacts.
+    private func plasmaPoints(time: Double, smoothed: Float, peak: Float) -> [SIMD2<Float>] {
+        let audio = Double(smoothed)
+        let t = time * 0.15  // Faster movement
+
+        // Reduced amplitude to prevent row crossover
+        let baseAmp: Float = 0.10  // Reduced from 0.15
+        let audioAmp: Float = Float(audio * 0.15)  // Reduced from 0.5
+        let amp = baseAmp + audioAmp  // Max: 0.25
+
+        // Clamped explosion on peaks
+        let explosion = min(peak * 0.2, 0.15)  // Capped
+
+        func wave(_ phase: Double, _ intensity: Float) -> Float {
+            Float(sin(t + phase) * Double(amp * intensity))
+        }
+
+        // Clamp row Y to prevent crossing
+        func clampRow1(_ y: Float) -> Float {
+            max(0.12, min(0.48, y))
+        }
+        func clampRow2(_ y: Float) -> Float {
+            max(0.52, min(0.88, y))
+        }
+
+        func radialPush(_ x: Float, _ y: Float, scale: Float = 1.0) -> SIMD2<Float> {
+            let dx = x - 0.5
+            let dy = y - 0.5
+            let dist = sqrt(dx * dx + dy * dy)
+            guard dist > 0.001 else { return SIMD2(x, y) }
+            let push = explosion * scale
+            // Clamp to valid range
+            let newX = max(0.02, min(0.98, x + (dx / dist) * push))
+            let newY = max(0.02, min(0.98, y + (dy / dist) * push))
+            return SIMD2(newX, newY)
+        }
+
+        let breathe: Float = animationPhase ? 0.02 : -0.02  // Reduced from 0.04
+
+        let basePoints: [(Float, Float)] = [
+            (0, 0),
+            (max(0.1, 0.33 + breathe), 0),
+            (min(0.9, 0.66 - breathe), 0),
+            (1, 0),
+
+            (0, clampRow1(0.33 + wave(0, 0.8))),
+            (0.33, clampRow1(0.33 + wave(0.5, 1.0))),
+            (0.66, clampRow1(0.33 + wave(1.0, 1.0))),
+            (1, clampRow1(0.33 + wave(1.5, 0.8))),
+
+            (0, clampRow2(0.66 + wave(2.0, 0.8))),
+            (0.33, clampRow2(0.66 + wave(2.5, 1.0))),
+            (0.66, clampRow2(0.66 + wave(3.0, 1.0))),
+            (1, clampRow2(0.66 + wave(3.5, 0.8))),
+
+            (0, 1),
+            (max(0.1, 0.33 - breathe), 1),
+            (min(0.9, 0.66 + breathe), 1),
+            (1, 1)
+        ]
+
+        return basePoints.enumerated().map { index, point in
+            let isInterior = [5, 6, 9, 10].contains(index)
+            if isInterior {
+                return radialPush(point.0, point.1, scale: 1.2)
+            }
+            return SIMD2(point.0, point.1)
+        }
+    }
+
+    /// Plasma colors - high contrast with peak-triggered flashes
+    private func plasmaColors(time: Double, smoothed: Float, peak: Float) -> [Color] {
+        let audioIntensity = Double(smoothed)
+        let peakFlash = Double(peak)
+
+        // Use cached plasma colors with dynamic intensity
+        let boost = 0.6 + audioIntensity * 0.4 + peakFlash * 0.3
+
+        return CachedColors.plasma.enumerated().map { index, color in
+            let row = index / 4
+            let isCenter = [5, 6, 9, 10].contains(index)
+            // Center glows brighter on peaks
+            let centerBoost = isCenter ? peakFlash * 0.4 : 0
+            // Edges more transparent
+            let baseOpacity: Double = row == 0 || row == 3 ? 0.5 : 0.85
+            return color.opacity(min(1.0, (baseOpacity + centerBoost) * boost))
         }
     }
 
@@ -198,59 +441,23 @@ struct LiquidAudioVisualizer: View {
 
     /// Ocean: Vertical gradient matching reference animation
     /// White/cream top → light cyan → cyan/teal → deep blue bottom
+    /// Uses cached colors for performance (eliminates per-frame Color(hex:) parsing)
     private func oceanMeshColors(audioIntensity: Double) -> [Color] {
-        let boost = 0.8 + audioIntensity * 0.2
+        let boost = 0.7 + audioIntensity * 0.4  // 1.5x boost for more visible voice response
 
-        return [
-            // Row 0 - top (white/cream)
-            Color(hex: "FFFEF5").opacity(0.95 * boost),
-            Color(hex: "FFFDF0").opacity(0.95 * boost),
-            Color(hex: "FFFEF5").opacity(0.95 * boost),
-            Color(hex: "FFFDF0").opacity(0.95 * boost),
-
-            // Row 1 - light cyan
-            Color(hex: "E0FFFF").opacity(0.9 * boost),
-            Color(hex: "B0E0E6").opacity(0.9 * boost),
-            Color(hex: "AFEEEE").opacity(0.9 * boost),
-            Color(hex: "E0FFFF").opacity(0.9 * boost),
-
-            // Row 2 - cyan/teal
-            Color(hex: "40E0D0").opacity(0.85 * boost),
-            Color(hex: "00CED1").opacity(0.85 * boost),
-            Color(hex: "20B2AA").opacity(0.85 * boost),
-            Color(hex: "48D1CC").opacity(0.85 * boost),
-
-            // Row 3 - bottom (deep blue)
-            Color(hex: "0077B6").opacity(0.9 * boost),
-            Color(hex: "0096C7").opacity(0.9 * boost),
-            Color(hex: "00B4D8").opacity(0.9 * boost),
-            Color(hex: "0077B6").opacity(0.9 * boost)
-        ]
+        // Apply opacity to cached colors (fast operation vs Color(hex:) parsing)
+        return zip(CachedColors.ocean, CachedColors.oceanOpacities).map { color, opacity in
+            color.opacity(opacity * boost)
+        }
     }
 
     private func coolMeshColors(audioIntensity: Double) -> [Color] {
-        // Base opacities - bright base with subtle audio boost
+        // Uses cached colors for performance
         let boost = 0.6 + audioIntensity * 0.4
-        let baseOpacities: [Double] = [0.3, 0.5, 0.5, 0.3, 0.5, 0.7, 0.7, 0.5, 0.5, 0.7, 0.7, 0.5, 0.3, 0.5, 0.5, 0.3]
+        let colors = isRecording ? CachedColors.coolWarm : CachedColors.coolBlues
 
-        if isRecording {
-            // Warm reds/oranges when recording
-            let colors = [
-                Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff4757"), Color(hex: "ff6b6b"),
-                Color(hex: "ffa502"), Color(hex: "ff6348"), Color(hex: "ffc048"), Color(hex: "ffa502"),
-                Color(hex: "ff4757"), Color(hex: "ffc048"), Color(hex: "ee5a24"), Color(hex: "ff4757"),
-                Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff4757"), Color(hex: "ff6b6b")
-            ]
-            return zip(colors, baseOpacities).map { $0.opacity(min(1.0, $1 * boost)) }
-        } else {
-            // Cool blues/purples when idle
-            let colors = [
-                Color(hex: "667eea"), Color(hex: "764ba2"), Color(hex: "6B8DD6"), Color(hex: "667eea"),
-                Color(hex: "764ba2"), Color(hex: "8E37D7"), Color(hex: "00d2d3"), Color(hex: "764ba2"),
-                Color(hex: "6B8DD6"), Color(hex: "00d2d3"), Color(hex: "5f27cd"), Color(hex: "6B8DD6"),
-                Color(hex: "667eea"), Color(hex: "764ba2"), Color(hex: "6B8DD6"), Color(hex: "667eea")
-            ]
-            return zip(colors, baseOpacities).map { $0.opacity(min(1.0, $1 * boost)) }
+        return zip(colors, CachedColors.coolOpacities).map { color, opacity in
+            color.opacity(min(1.0, opacity * boost))
         }
     }
 
@@ -298,15 +505,11 @@ struct LiquidAudioVisualizer: View {
     }
 
     private func sunsetMeshColors(audioIntensity: Double) -> [Color] {
-        let colors: [Color] = [
-            Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff9ff3"), Color(hex: "ff6b6b"),
-            Color(hex: "ffa502"), Color(hex: "ee5a24"), Color(hex: "ff4757"), Color(hex: "ffa502"),
-            Color(hex: "ff9ff3"), Color(hex: "ff4757"), Color(hex: "c44569"), Color(hex: "ff9ff3"),
-            Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff9ff3"), Color(hex: "ff6b6b")
-        ]
-        let baseOpacities: [Double] = [0.3, 0.5, 0.5, 0.3, 0.5, 0.7, 0.7, 0.5, 0.5, 0.7, 0.7, 0.5, 0.3, 0.5, 0.5, 0.3]
+        // Uses cached colors for performance
         let boost = 0.6 + audioIntensity * 0.4
-        return zip(colors, baseOpacities).map { $0.opacity(min(1.0, $1 * boost)) }
+        return zip(CachedColors.sunset, CachedColors.coolOpacities).map { color, opacity in
+            color.opacity(min(1.0, opacity * boost))
+        }
     }
 
     private func auroraMeshColors(time: Double, audioIntensity: Double) -> [Color] {
