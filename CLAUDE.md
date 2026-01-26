@@ -25,7 +25,21 @@ midIDEA is a native iOS voice recorder app with AI-powered transcription and ins
 - `RecordingRootView` - Main recording screen with visualizer, rotating prompts, record button
 - `SidebarDrawer` - Recordings list that slides in from left
 - `TranscriptDetailView` - View/edit transcript with playback controls
-- `LiquidAudioVisualizer` - Audio-reactive MeshGradient background
+- `LiquidAudioVisualizer` - Audio-reactive MeshGradient background (see below)
+
+### LiquidAudioVisualizer
+Full-screen MeshGradient (4x4 grid, 16 points) with voice-reactive animation.
+
+**Visual Styles** (3-finger tap to toggle):
+- **Liquid Ocean**: Smooth horizontal wave bands, ocean color palette
+- **Plasma Pulse**: High contrast, dramatic movement with peak explosions
+
+**Technical Details**:
+- Renders at 120Hz via `TimelineView(.animation)`
+- `AudioInterpolator` smooths 20Hz audio data to 120Hz rendering
+- Row clamping prevents mesh triangulation artifacts (Row 1: [0.12, 0.48], Row 2: [0.52, 0.88])
+- Cached color palettes eliminate per-frame `Color(hex:)` parsing
+- No `.drawingGroup()` or `.brightness()` modifiers (cause flickering)
 
 ## Next Steps: Voice Keyboard Extension
 
@@ -125,6 +139,9 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 - Edge swipe from left (40pt threshold) opens sidebar
 - Uses `.highPriorityGesture()` on NavigationStack
 - Only active when `navigationPath.isEmpty`
+
+### Hidden Gestures
+- **3-finger tap**: Toggle visualizer style (Liquid Ocean ↔ Plasma Pulse)
 
 ### Recording Flow
 1. User taps record → `AudioService.startRecording()`
