@@ -4,15 +4,11 @@
 //
 //  Created by Arnab on 1/13/26.
 //
+//  NOTE: App Intents for the widget extension are defined in StopRecordingIntent.swift
+//  and RecordingWidgetControl.swift. This file is kept minimal.
 
-import WidgetKit
 import AppIntents
 
-struct ConfigurationAppIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Configuration" }
-    static var description: IntentDescription { "This is an example widget." }
-
-    // An example configurable parameter.
-    @Parameter(title: "Favorite Emoji", default: "😃")
-    var favoriteEmoji: String
-}
+// App Intents are defined in their respective files:
+// - StopRecordingIntent.swift: Intent for stopping recording from Dynamic Island
+// - RecordingWidgetControl.swift: Intent for Control Center widget

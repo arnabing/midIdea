@@ -4,19 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-midIDEA is a native iOS voice recorder app styled after the iconic Talkboy cassette recorder from Home Alone 2. Built with SwiftUI targeting iOS 17+.
+midIDEA is a native iOS voice recorder app with AI-powered transcription and insights. Built with SwiftUI targeting iOS 26+ with Liquid Glass effects.
 
 ## Current Status (Jan 2026)
 
-- **Dual UI Modes**: 
-    - **Realistic**: High-fidelity 3D rendering with metallic textures, depth effects, and accurate proportions.
-    - **Cartoon**: Simplified, high-contrast UI using a flat image background with invisible touch targets (`TalkboyCartoonView`).
-- **Background**: Implemented "iOS 26 Liquid Glass" effect (blurred, moving abstract blobs) for the Cartoon view.
-- **Wave-like Features**:
-    - **Auto-Transcription**: Recordings are immediately transcribed upon stopping.
-    - **Quick Access**: Stopping a recording (or pressing Stop when idle) immediately opens the Library view.
-- **Samples**: Long-press on Play trigger placeholder for "Home Alone 2" samples.
-- **Hardware Integration**: Support for Action Button via AppIntents.
+### UI Architecture
+- **Recording-First Navigation**: Recording screen is the root view, sidebar slides in from left
+- **iOS 26 Liquid Glass**: Glass effects on buttons (`.glassEffect(.regular.interactive())`)
+- **LiquidAudioVisualizer**: Full-screen MeshGradient background (4x4 grid, 120Hz physics-based animation)
+- **Live Activity / Dynamic Island**: Shows recording status when app is backgrounded
+
+### Core Features
+- **Auto-Transcription**: Recordings transcribed immediately via iOS 26 SpeechAnalyzer
+- **AI Insights**: Apple Intelligence generates summaries and key points
+- **Sidebar Navigation**: Swipe from left edge or tap hamburger to access recordings
+- **Action Button**: iOS 17+ AppIntents for quick recording from lock screen
+
+### Key Views
+- `MainContainerView` - Root container with NavigationStack and sidebar overlay
+- `RecordingRootView` - Main recording screen with visualizer, rotating prompts, record button
+- `SidebarDrawer` - Recordings list that slides in from left
+- `TranscriptDetailView` - View/edit transcript with playback controls
+- `LiquidAudioVisualizer` - Audio-reactive MeshGradient background
 
 ## Next Steps: Voice Keyboard Extension
 
@@ -30,18 +39,6 @@ iOS keyboard extensions **cannot access the microphone** (Apple restriction sinc
 ### Architecture Decision
 Use **Apple SpeechAnalyzer** (iOS 26) - already integrated, faster than Whisper (55% faster per Apple benchmarks). No need for external models like Parakeet or WhisperKit.
 
-### Keyboard Features Planned
-1. **Two modes**: Full keyboard + voice OR voice-only bar (user switchable)
-2. **AI polish**: Remove filler words, add punctuation, format based on context (email=formal, messages=casual)
-3. **Recent transcripts**: Quick re-insertion of previous dictations
-4. **Action Button**: Quick dictate to clipboard for any app
-
-### Research References
-- [FluidAudio SDK](https://github.com/FluidInference/FluidAudio) - Parakeet on CoreML (batch only, no streaming yet)
-- [WhisperKit](https://github.com/argmaxinc/WhisperKit) - Whisper on CoreML
-- [Apple SpeechAnalyzer WWDC25](https://developer.apple.com/videos/play/wwdc2025/277/) - Native, fastest option
-- Wispr Flow / Willow both use **cloud processing**, not truly on-device
-
 ## Build Commands
 
 ```bash
@@ -49,7 +46,7 @@ Use **Apple SpeechAnalyzer** (iOS 26) - already integrated, faster than Whisper 
 xcodebuild build \
   -project midIDEA.xcodeproj \
   -scheme midIDEA \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   CODE_SIGN_IDENTITY="" \
   CODE_SIGNING_REQUIRED=NO
 
@@ -69,47 +66,72 @@ Cloud builds via Codemagic (see `codemagic.yaml`) - pushes to `main` or `develop
 ### Folder Structure
 ```
 midIDEA/
-├── App/           # App entry point, ContentView
+├── App/              # App entry point, ContentView
 ├── Features/
-│   ├── Recorder/  # Main cassette UI (Realistic & Cartoon views)
-│   └── Library/   # Recordings list, detail view
-├── Services/      # AudioService, HapticService, TranscriptionService
-├── Models/        # Recording model, RecordingStore
-├── Intents/       # Action Button / Siri Shortcuts (AppIntents)
-├── Extensions/    # Color+Theme
-└── Resources/     # Assets (colors, icons)
+│   ├── Main/         # MainContainerView, RecordingRootView, SidebarDrawer
+│   ├── Detail/       # TranscriptDetailView
+│   ├── Recorder/     # Legacy recorder views (TalkboyRealisticView, etc.)
+│   └── Minimal/      # Onboarding views
+├── Services/         # AudioService, TranscriptionService, AIService
+├── Models/           # Recording model, RecordingStore
+├── Intents/          # Action Button / Siri Shortcuts (AppIntents)
+├── Visualizer/       # LiquidAudioVisualizer (MeshGradient)
+├── Extensions/       # Color+Theme, Font+Typography
+└── Resources/        # Assets (colors, icons)
 
-Shared/                    # App Groups shared code (keyboard ↔ app)
-├── SharedDefaults.swift   # Shared UserDefaults wrapper
-└── SharedContainer.swift  # Shared file container access
+RecordingWidget/      # Widget extension for Live Activity / Dynamic Island
+├── RecordingWidgetLiveActivity.swift
+├── RecordingActivityAttributes.swift
+└── StopRecordingIntent.swift
 
-midIDEAKeyboard/           # Custom keyboard extension (WIP)
-├── KeyboardViewController.swift
-├── KeyboardView.swift
-└── Info.plist
+Shared/               # App Groups shared code
+├── SharedDefaults.swift
+└── SharedContainer.swift
 ```
 
 ### Key Services
 - **AudioService**: Wraps AVAudioRecorder/AVAudioPlayer, handles metering, playback rate control
 - **RecordingStore**: Persists recordings metadata to UserDefaults, manages audio file lifecycle
-- **TranscriptionService**: On-device transcription via iOS 26 SpeechAnalyzer (with DictationTranscriber fallback)
+- **TranscriptionService**: On-device transcription via iOS 26 SpeechAnalyzer
 - **AIService**: Apple Intelligence integration for summaries and key points
-- **HapticService**: CoreHaptics feedback for record/playback actions
+- **LiveActivityManager**: Manages Dynamic Island / Live Activity for recording status
 
-### App Groups (for Keyboard Extension)
+### App Groups (for Widget Extension)
 - **Identifier**: `group.com.mididea.shared`
-- **SharedDefaults**: UserDefaults suite for keyboard ↔ app communication
-- **SharedContainer**: File access for shared recordings and temp audio
+- **SharedDefaults**: UserDefaults suite for widget ↔ app communication
 
 ### Data Flow
 Audio files stored in app's Documents directory. Recording metadata (JSON) stored in UserDefaults. Max recording: 30 minutes.
 
-## Key Design Decisions
+## iOS 26 Liquid Glass Effects
 
-- **Hold-to-record UX**: Press and hold to record, release triggers 3-second countdown to save (tap to resume, swipe to cancel)
-- **Action Button**: iOS 17+ AppIntents for quick recording from lock screen
-- **On-device only**: Uses Apple Speech framework (no cloud transcription)
-- **Single theme**: Talkboy-inspired retro cassette design (no theme switching in v1)
+### Button Styling
+```swift
+// Interactive glass button (record button)
+.glassEffect(.regular.interactive(), in: .circle)
+
+// Material background (sidebar button)
+.background(Circle().fill(.regularMaterial))
+```
+
+### Key Points
+- Don't add `.shadow()` after `.glassEffect()` - glass has built-in depth
+- Use `.allowsHitTesting(false)` on background views to let gestures pass through
+- Use `.highPriorityGesture()` for edge swipe gestures to override system gestures
+
+## Navigation Patterns
+
+### Sidebar Gesture
+- Edge swipe from left (40pt threshold) opens sidebar
+- Uses `.highPriorityGesture()` on NavigationStack
+- Only active when `navigationPath.isEmpty`
+
+### Recording Flow
+1. User taps record → `AudioService.startRecording()`
+2. Live Activity starts (Dynamic Island shows REC + timer)
+3. User taps stop → `AudioService.stopRecording()`
+4. Recording saved → Navigate to TranscriptDetailView
+5. Auto-transcription begins → AI summary generated
 
 ## Required Permissions
 
@@ -118,12 +140,7 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 
 ## Frameworks
 
-SwiftUI, AVFoundation, Speech, AppIntents, CoreHaptics, UIKit (keyboard extension)
-
-## URL Schemes
-
-- `mididea://voice-input` - Triggers voice input from keyboard extension
-- `mididea://voice-input?context=email` - With context hint for AI formatting
+SwiftUI, AVFoundation, Speech, AppIntents, CoreHaptics, ActivityKit, WidgetKit
 
 ## Developer Account
 

@@ -1,7 +1,7 @@
 import ActivityKit
 import Foundation
 
-/// Manages Live Activities for Dynamic Island recording indicator
+/// Manages Live Activities for Dynamic Island recording/playback indicator
 @MainActor
 class LiveActivityManager: ObservableObject {
     static let shared = LiveActivityManager()
@@ -10,14 +10,78 @@ class LiveActivityManager: ObservableObject {
     private var updateTimer: Timer?
     private var startTime: Date?
     private var currentAudioLevel: Float = 0
+    private var currentMode: ActivityMode = .recording
+    private var playbackDuration: TimeInterval = 0
+    private var playbackTitle: String?
 
     private init() {}
 
-    // MARK: - Public Methods
+    // MARK: - Recording Methods
 
     /// Start a recording Live Activity for Dynamic Island
     func startRecordingActivity() {
+        // Debug: Check authorization status
+        let authInfo = ActivityAuthorizationInfo()
+        print("[LiveActivity] Authorization check:")
+        print("  - areActivitiesEnabled: \(authInfo.areActivitiesEnabled)")
+        print("  - frequentPushesEnabled: \(authInfo.frequentPushesEnabled)")
+
         // Check if Live Activities are supported
+        guard authInfo.areActivitiesEnabled else {
+            print("[LiveActivity] ERROR: Live Activities not enabled by user")
+            return
+        }
+
+        // End any existing activity
+        if currentActivity != nil {
+            print("[LiveActivity] Ending existing activity before starting new one")
+            endActivity()
+        }
+
+        startTime = Date()
+        currentMode = .recording
+
+        let attributes = RecordingActivityAttributes(startTime: startTime!, mode: .recording)
+        let initialState = RecordingActivityAttributes.ContentState(
+            elapsedTime: 0,
+            isActive: true,
+            audioLevel: 0,
+            mode: .recording,
+            totalDuration: nil,
+            title: nil
+        )
+
+        print("[LiveActivity] Requesting Live Activity...")
+
+        do {
+            let activity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: initialState, staleDate: nil),
+                pushType: nil
+            )
+            currentActivity = activity
+            print("[LiveActivity] SUCCESS - Started Recording Live Activity: \(activity.id)")
+
+            // Start update timer
+            startUpdateTimer()
+        } catch let error as ActivityAuthorizationError {
+            print("[LiveActivity] AUTHORIZATION ERROR: \(error.localizedDescription)")
+        } catch {
+            print("[LiveActivity] FAILED to start Live Activity:")
+            print("  - Error: \(error)")
+            print("  - Localized: \(error.localizedDescription)")
+        }
+    }
+
+    /// End the recording Live Activity
+    func endRecordingActivity() {
+        endActivity()
+    }
+
+    // MARK: - Playback Methods
+
+    /// Start a playback Live Activity for Dynamic Island
+    func startPlaybackActivity(title: String, duration: TimeInterval) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             print("Live Activities not enabled")
             return
@@ -25,16 +89,22 @@ class LiveActivityManager: ObservableObject {
 
         // End any existing activity
         if currentActivity != nil {
-            endRecordingActivity()
+            endActivity()
         }
 
         startTime = Date()
+        currentMode = .playback
+        playbackDuration = duration
+        playbackTitle = title
 
-        let attributes = RecordingActivityAttributes(startTime: startTime!)
+        let attributes = RecordingActivityAttributes(startTime: startTime!, mode: .playback)
         let initialState = RecordingActivityAttributes.ContentState(
             elapsedTime: 0,
             isActive: true,
-            audioLevel: 0
+            audioLevel: 0,
+            mode: .playback,
+            totalDuration: duration,
+            title: title
         )
 
         do {
@@ -44,23 +114,26 @@ class LiveActivityManager: ObservableObject {
                 pushType: nil
             )
             currentActivity = activity
-            print("Started Live Activity: \(activity.id)")
+            print("Started Playback Live Activity: \(activity.id)")
 
             // Start update timer
             startUpdateTimer()
         } catch {
-            print("Failed to start Live Activity: \(error)")
+            print("Failed to start Playback Live Activity: \(error)")
         }
     }
 
-    /// Update the activity with new elapsed time and audio level
-    func updateRecordingActivity(elapsedTime: TimeInterval, audioLevel: Float = 0) {
-        guard let activity = currentActivity else { return }
+    /// Update playback progress
+    func updatePlaybackProgress(_ currentTime: TimeInterval) {
+        guard let activity = currentActivity, currentMode == .playback else { return }
 
         let state = RecordingActivityAttributes.ContentState(
-            elapsedTime: elapsedTime,
+            elapsedTime: currentTime,
             isActive: true,
-            audioLevel: normalizeAudioLevel(audioLevel)
+            audioLevel: currentAudioLevel,
+            mode: .playback,
+            totalDuration: playbackDuration,
+            title: playbackTitle
         )
 
         Task {
@@ -68,8 +141,20 @@ class LiveActivityManager: ObservableObject {
         }
     }
 
-    /// End the recording Live Activity
-    func endRecordingActivity() {
+    /// End the playback Live Activity
+    func endPlaybackActivity() {
+        endActivity()
+    }
+
+    // MARK: - Shared Methods
+
+    /// Set the current audio level for visualization
+    func setAudioLevel(_ level: Float) {
+        currentAudioLevel = level
+    }
+
+    /// End any active Live Activity
+    func endActivity() {
         stopUpdateTimer()
 
         guard let activity = currentActivity else { return }
@@ -77,7 +162,10 @@ class LiveActivityManager: ObservableObject {
         let finalState = RecordingActivityAttributes.ContentState(
             elapsedTime: startTime.map { Date().timeIntervalSince($0) } ?? 0,
             isActive: false,
-            audioLevel: 0
+            audioLevel: 0,
+            mode: currentMode,
+            totalDuration: currentMode == .playback ? playbackDuration : nil,
+            title: playbackTitle
         )
 
         Task {
@@ -90,11 +178,7 @@ class LiveActivityManager: ObservableObject {
 
         currentActivity = nil
         startTime = nil
-    }
-
-    /// Set the current audio level for visualization
-    func setAudioLevel(_ level: Float) {
-        currentAudioLevel = level
+        playbackTitle = nil
     }
 
     // MARK: - Private Methods
@@ -115,13 +199,33 @@ class LiveActivityManager: ObservableObject {
     private func timerTick() {
         guard let start = startTime else { return }
         let elapsed = Date().timeIntervalSince(start)
-        updateRecordingActivity(elapsedTime: elapsed, audioLevel: currentAudioLevel)
+
+        if currentMode == .recording {
+            updateRecordingActivity(elapsedTime: elapsed, audioLevel: currentAudioLevel)
+        }
+        // Note: Playback progress is updated externally via updatePlaybackProgress
+    }
+
+    /// Update the recording activity with new elapsed time and audio level
+    private func updateRecordingActivity(elapsedTime: TimeInterval, audioLevel: Float = 0) {
+        guard let activity = currentActivity, currentMode == .recording else { return }
+
+        let state = RecordingActivityAttributes.ContentState(
+            elapsedTime: elapsedTime,
+            isActive: true,
+            audioLevel: normalizeAudioLevel(audioLevel),
+            mode: .recording,
+            totalDuration: nil,
+            title: nil
+        )
+
+        Task {
+            await activity.update(.init(state: state, staleDate: nil))
+        }
     }
 
     /// Normalize dB audio level (-60 to 0) to 0-1 range
     private func normalizeAudioLevel(_ dbLevel: Float) -> Float {
-        // Audio level comes in dB (-60 to 0 typically)
-        // Convert to 0-1 range
         let minDb: Float = -60
         let maxDb: Float = 0
         let clamped = max(minDb, min(maxDb, dbLevel))

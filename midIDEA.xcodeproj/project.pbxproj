@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		06276F9F2F17434A00A6D44A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06276F9E2F17434A00A6D44A /* WidgetKit.framework */; };
 		06276FA12F17434A00A6D44A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 06276FA02F17434A00A6D44A /* SwiftUI.framework */; };
-		06276FB22F17434B00A6D44A /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A1000001001 /* midIDEAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000 /* midIDEAApp.swift */; };
 		A1000002001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000 /* ContentView.swift */; };
 		A1000003001 /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003000 /* Recording.swift */; };
@@ -17,34 +16,10 @@
 		A1000005001 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000005000 /* AudioService.swift */; };
 		A1000006001 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000006000 /* HapticService.swift */; };
 		A1000007001 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000007000 /* TranscriptionService.swift */; };
-		A1000008001 /* RecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000008000 /* RecorderView.swift */; };
-		A1000009001 /* CassetteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000009000 /* CassetteView.swift */; };
-		A1000010001 /* VUMeterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000 /* VUMeterView.swift */; };
-		A1000011001 /* TransportControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000 /* TransportControlsView.swift */; };
-		A1000012001 /* TimeDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012000 /* TimeDisplayView.swift */; };
-		A1000013001 /* PlaybackSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000013000 /* PlaybackSpeedView.swift */; };
-		A1000014001 /* HoldToRecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014000 /* HoldToRecordButton.swift */; };
-		A1000015001 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000015000 /* LibraryView.swift */; };
-		A1000016001 /* RecordingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000016000 /* RecordingDetailView.swift */; };
 		A1000017001 /* RecordingIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000017000 /* RecordingIntent.swift */; };
 		A1000018001 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000018000 /* Color+Theme.swift */; };
 		A1000019001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000019000 /* Assets.xcassets */; };
-		A1000022001 /* TalkboyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022000 /* TalkboyView.swift */; };
-		A1000024001 /* TapeReelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024000 /* TapeReelView.swift */; };
-		A1000025001 /* TalkboyButtonBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000 /* TalkboyButtonBar.swift */; };
-		A1000026001 /* TalkboySlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026000 /* TalkboySlider.swift */; };
-		A1000027001 /* TalkboyBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000 /* TalkboyBodyView.swift */; };
-		A100002A001 /* TalkboyFaceplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002A000 /* TalkboyFaceplateView.swift */; };
-		A100002B001 /* TalkboyKeybedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002B000 /* TalkboyKeybedView.swift */; };
-		A100002D001 /* TalkboyLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002D000 /* TalkboyLayout.swift */; };
-		A100002E001 /* TalkboyLeftAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002E000 /* TalkboyLeftAttachmentView.swift */; };
-		A100002F001 /* TalkboySliderAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002F000 /* TalkboySliderAssembly.swift */; };
-		A1000030001 /* TalkboyRightAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000030000 /* TalkboyRightAttachmentView.swift */; };
-		A1000031001 /* TalkboyRealisticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031000 /* TalkboyRealisticView.swift */; };
-		A1000032001 /* TalkboyCartoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000032000 /* TalkboyCartoonView.swift */; };
-		A1000033001 /* CartoonCassetteReel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000033000 /* CartoonCassetteReel.swift */; };
 		A1000034001 /* DynamicIslandGlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000034000 /* DynamicIslandGlow.swift */; };
-		A1000035001 /* MinimalRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035000 /* MinimalRecorderView.swift */; };
 		A1000036001 /* MinimalWaveformBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036000 /* MinimalWaveformBar.swift */; };
 		A1000037001 /* MinimalRecordingsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000037000 /* MinimalRecordingsList.swift */; };
 		A1000038001 /* ActionButtonOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000038000 /* ActionButtonOnboardingView.swift */; };
@@ -59,6 +34,7 @@
 		A1000042001 /* TranscriptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042000 /* TranscriptDetailView.swift */; };
 		A1000043001 /* TranscriptBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000043000 /* TranscriptBubbleView.swift */; };
 		A1000044001 /* MediaPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000044000 /* MediaPlayerBar.swift */; };
+		A1EMBED0001 /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,7 +54,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				/* Widget temporarily disabled for simulator debugging */
+				A1EMBED0001 /* RecordingWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -97,36 +73,12 @@
 		A1000005000 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		A1000006000 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
 		A1000007000 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
-		A1000008000 /* RecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecorderView.swift; sourceTree = "<group>"; };
-		A1000009000 /* CassetteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CassetteView.swift; sourceTree = "<group>"; };
-		A1000010000 /* VUMeterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VUMeterView.swift; sourceTree = "<group>"; };
-		A1000011000 /* TransportControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportControlsView.swift; sourceTree = "<group>"; };
-		A1000012000 /* TimeDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeDisplayView.swift; sourceTree = "<group>"; };
-		A1000013000 /* PlaybackSpeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackSpeedView.swift; sourceTree = "<group>"; };
-		A1000014000 /* HoldToRecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldToRecordButton.swift; sourceTree = "<group>"; };
-		A1000015000 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
-		A1000016000 /* RecordingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDetailView.swift; sourceTree = "<group>"; };
 		A1000017000 /* RecordingIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIntent.swift; sourceTree = "<group>"; };
 		A1000018000 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		A1000019000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000020000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000021000 /* midIDEA.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = midIDEA.entitlements; sourceTree = "<group>"; };
-		A1000022000 /* TalkboyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyView.swift; sourceTree = "<group>"; };
-		A1000024000 /* TapeReelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapeReelView.swift; sourceTree = "<group>"; };
-		A1000025000 /* TalkboyButtonBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyButtonBar.swift; sourceTree = "<group>"; };
-		A1000026000 /* TalkboySlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboySlider.swift; sourceTree = "<group>"; };
-		A1000027000 /* TalkboyBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyBodyView.swift; sourceTree = "<group>"; };
-		A100002A000 /* TalkboyFaceplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyFaceplateView.swift; sourceTree = "<group>"; };
-		A100002B000 /* TalkboyKeybedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyKeybedView.swift; sourceTree = "<group>"; };
-		A100002D000 /* TalkboyLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyLayout.swift; sourceTree = "<group>"; };
-		A100002E000 /* TalkboyLeftAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyLeftAttachmentView.swift; sourceTree = "<group>"; };
-		A100002F000 /* TalkboySliderAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboySliderAssembly.swift; sourceTree = "<group>"; };
-		A1000030000 /* TalkboyRightAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyRightAttachmentView.swift; sourceTree = "<group>"; };
-		A1000031000 /* TalkboyRealisticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyRealisticView.swift; sourceTree = "<group>"; };
-		A1000032000 /* TalkboyCartoonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalkboyCartoonView.swift; sourceTree = "<group>"; };
-		A1000033000 /* CartoonCassetteReel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartoonCassetteReel.swift; sourceTree = "<group>"; };
 		A1000034000 /* DynamicIslandGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandGlow.swift; sourceTree = "<group>"; };
-		A1000035000 /* MinimalRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalRecorderView.swift; sourceTree = "<group>"; };
 		A1000036000 /* MinimalWaveformBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalWaveformBar.swift; sourceTree = "<group>"; };
 		A1000037000 /* MinimalRecordingsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalRecordingsList.swift; sourceTree = "<group>"; };
 		A1000038000 /* ActionButtonOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonOnboardingView.swift; sourceTree = "<group>"; };
@@ -243,49 +195,9 @@
 			path = Features;
 			sourceTree = "<group>";
 		};
-		A10000GE000 /* Main */ = {
-			isa = PBXGroup;
-			children = (
-				A100003F000 /* MainContainerView.swift */,
-				A1000041000 /* SidebarRecordingRow.swift */,
-			);
-			path = Main;
-			sourceTree = "<group>";
-		};
-		A10000GF000 /* Detail */ = {
-			isa = PBXGroup;
-			children = (
-				A1000042000 /* TranscriptDetailView.swift */,
-				A1000043000 /* TranscriptBubbleView.swift */,
-				A1000044000 /* MediaPlayerBar.swift */,
-			);
-			path = Detail;
-			sourceTree = "<group>";
-		};
 		A10000G5000 /* Recorder */ = {
 			isa = PBXGroup;
 			children = (
-				A1000008000 /* RecorderView.swift */,
-				A1000009000 /* CassetteView.swift */,
-				A1000010000 /* VUMeterView.swift */,
-				A1000011000 /* TransportControlsView.swift */,
-				A1000012000 /* TimeDisplayView.swift */,
-				A1000013000 /* PlaybackSpeedView.swift */,
-				A1000014000 /* HoldToRecordButton.swift */,
-				A1000022000 /* TalkboyView.swift */,
-				A1000024000 /* TapeReelView.swift */,
-				A1000025000 /* TalkboyButtonBar.swift */,
-				A1000026000 /* TalkboySlider.swift */,
-				A1000027000 /* TalkboyBodyView.swift */,
-				A100002A000 /* TalkboyFaceplateView.swift */,
-				A100002B000 /* TalkboyKeybedView.swift */,
-				A100002D000 /* TalkboyLayout.swift */,
-				A100002E000 /* TalkboyLeftAttachmentView.swift */,
-				A100002F000 /* TalkboySliderAssembly.swift */,
-				A1000030000 /* TalkboyRightAttachmentView.swift */,
-				A1000031000 /* TalkboyRealisticView.swift */,
-				A1000032000 /* TalkboyCartoonView.swift */,
-				A1000033000 /* CartoonCassetteReel.swift */,
 			);
 			path = Recorder;
 			sourceTree = "<group>";
@@ -293,8 +205,6 @@
 		A10000G6000 /* Library */ = {
 			isa = PBXGroup;
 			children = (
-				A1000015000 /* LibraryView.swift */,
-				A1000016000 /* RecordingDetailView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -350,7 +260,6 @@
 				A100003E000 /* CompletedRecordingView.swift */,
 				A1000034000 /* DynamicIslandGlow.swift */,
 				A1000039000 /* LiquidAudioVisualizer.swift */,
-				A1000035000 /* MinimalRecorderView.swift */,
 				A1000036000 /* MinimalWaveformBar.swift */,
 				A1000037000 /* MinimalRecordingsList.swift */,
 				A1000038000 /* ActionButtonOnboardingView.swift */,
@@ -365,6 +274,25 @@
 				A100003B000 /* LiveActivityManager.swift */,
 			);
 			path = LiveActivity;
+			sourceTree = "<group>";
+		};
+		A10000GE000 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				A100003F000 /* MainContainerView.swift */,
+				A1000041000 /* SidebarRecordingRow.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		A10000GF000 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				A1000042000 /* TranscriptDetailView.swift */,
+				A1000043000 /* TranscriptBubbleView.swift */,
+				A1000044000 /* MediaPlayerBar.swift */,
+			);
+			path = Detail;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -485,33 +413,9 @@
 				A1000005001 /* AudioService.swift in Sources */,
 				A1000006001 /* HapticService.swift in Sources */,
 				A1000007001 /* TranscriptionService.swift in Sources */,
-				A1000008001 /* RecorderView.swift in Sources */,
-				A1000009001 /* CassetteView.swift in Sources */,
-				A1000010001 /* VUMeterView.swift in Sources */,
-				A1000011001 /* TransportControlsView.swift in Sources */,
-				A1000012001 /* TimeDisplayView.swift in Sources */,
-				A1000013001 /* PlaybackSpeedView.swift in Sources */,
-				A1000014001 /* HoldToRecordButton.swift in Sources */,
-				A1000015001 /* LibraryView.swift in Sources */,
-				A1000016001 /* RecordingDetailView.swift in Sources */,
 				A1000017001 /* RecordingIntent.swift in Sources */,
 				A1000018001 /* Color+Theme.swift in Sources */,
-				A1000022001 /* TalkboyView.swift in Sources */,
-				A1000024001 /* TapeReelView.swift in Sources */,
-				A1000025001 /* TalkboyButtonBar.swift in Sources */,
-				A1000026001 /* TalkboySlider.swift in Sources */,
-				A1000027001 /* TalkboyBodyView.swift in Sources */,
-				A100002A001 /* TalkboyFaceplateView.swift in Sources */,
-				A100002B001 /* TalkboyKeybedView.swift in Sources */,
-				A100002D001 /* TalkboyLayout.swift in Sources */,
-				A100002E001 /* TalkboyLeftAttachmentView.swift in Sources */,
-				A100002F001 /* TalkboySliderAssembly.swift in Sources */,
-				A1000030001 /* TalkboyRightAttachmentView.swift in Sources */,
-				A1000031001 /* TalkboyRealisticView.swift in Sources */,
-				A1000032001 /* TalkboyCartoonView.swift in Sources */,
-				A1000033001 /* CartoonCassetteReel.swift in Sources */,
 				A1000034001 /* DynamicIslandGlow.swift in Sources */,
-				A1000035001 /* MinimalRecorderView.swift in Sources */,
 				A1000036001 /* MinimalWaveformBar.swift in Sources */,
 				A1000037001 /* MinimalRecordingsList.swift in Sources */,
 				A1000038001 /* ActionButtonOnboardingView.swift in Sources */,
@@ -545,8 +449,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ALUCEW9B4W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RecordingWidget;
@@ -575,8 +481,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RecordingWidget/RecordingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ALUCEW9B4W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RecordingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RecordingWidget;
@@ -608,6 +516,7 @@
 				CODE_SIGN_ENTITLEMENTS = midIDEA/midIDEA.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ALUCEW9B4W;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
@@ -639,6 +548,7 @@
 				CODE_SIGN_ENTITLEMENTS = midIDEA/midIDEA.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ALUCEW9B4W;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;

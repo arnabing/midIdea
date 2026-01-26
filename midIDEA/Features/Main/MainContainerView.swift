@@ -1,103 +1,87 @@
 import SwiftUI
 
-/// Root container view using iOS 26 NavigationSplitView with Liquid Glass sidebar
+/// Root container view - Recording-first navigation with sidebar drawer
+/// Recording screen is always visible, sidebar slides in from left
 struct MainContainerView: View {
     @EnvironmentObject var recordingStore: RecordingStore
     @EnvironmentObject var audioService: AudioService
 
     // Navigation state
-    @State private var selectedRecording: Recording?
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var showSidebar = false
+    @State private var navigationPath = NavigationPath()
 
     // Recording state
     @State private var currentRecordingURL: URL?
-    @State private var showRecordingOverlay = true  // Start on recording screen
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Sidebar - automatically gets Liquid Glass in iOS 26
-            SidebarContent(
-                selectedRecording: $selectedRecording,
-                onNewRecording: startNewRecording
+        NavigationStack(path: $navigationPath) {
+            // Root: Recording screen (always the primary view)
+            RecordingRootView(
+                onOpenSidebar: { showSidebar = true },
+                onStop: stopRecording,
+                onStartRecording: actuallyStartRecording
             )
-            .navigationTitle("midIDEA")
-        } detail: {
-            // Detail content (transcript or empty state - NOT recording)
-            if let recording = selectedRecording {
+            .navigationDestination(for: Recording.self) { recording in
                 TranscriptDetailView(recording: recording)
-            } else {
-                emptyStateView
             }
         }
+        .highPriorityGesture(navigationPath.isEmpty ? edgeSwipeGesture : nil)
+        .overlay {
+            // Sidebar drawer from left
+            SidebarDrawer(
+                isPresented: $showSidebar,
+                onSelectRecording: { recording in
+                    showSidebar = false
+                    navigationPath.append(recording)
+                },
+                onNewRecording: {
+                    showSidebar = false
+                    // Already on recording screen, just close sidebar
+                }
+            )
+        }
         .onChange(of: audioService.isRecording) { oldValue, newValue in
-            // Handle recording completion (don't sync showRecordingOverlay - we control it manually)
+            // Handle recording completion
             if oldValue && !newValue && currentRecordingURL != nil {
-                // Recording stopped - dismiss overlay and handle completion
-                showRecordingOverlay = false
                 handleRecordingComplete()
             }
         }
-        // Full-screen recording overlay - iOS 26 Camera style
-        .fullScreenCover(isPresented: $showRecordingOverlay) {
-            RecordingOverlayView(
-                onStop: stopRecording,
-                onDismiss: { showRecordingOverlay = false },
-                onStartRecording: actuallyStartRecording
-            )
-            .environmentObject(audioService)
-        }
     }
 
-    // MARK: - Empty State
+    // MARK: - Edge Swipe Gesture
 
-    private var emptyStateView: some View {
-        VStack(spacing: 24) {
-            Spacer()
+    /// Swipe from left edge to open sidebar
+    private var edgeSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { value in
+                let startedNearEdge = value.startLocation.x < 40
+                let swipedRight = value.translation.width > 50
+                let velocityRight = value.predictedEndTranslation.width > 100
 
-            Image(systemName: "waveform")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-
-            Text("Select a recording")
-                .font(.title2)
-                .fontWeight(.medium)
-                .foregroundStyle(.primary)
-
-            Text("Choose a recording from the sidebar")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-        }
+                if startedNearEdge && (swipedRight || velocityRight) && !showSidebar {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showSidebar = true
+                    }
+                }
+            }
     }
 
     // MARK: - Actions
 
-    private func startNewRecording() {
-        // Just show the overlay - permission requested when user taps record
-        showRecordingOverlay = true
-    }
-
     private func actuallyStartRecording() {
-        // Called when user taps the record button in the overlay
         Task {
-            // Request microphone permission
             let granted = await audioService.requestMicrophonePermission()
             guard granted else {
                 print("Microphone permission denied")
                 return
             }
 
-            // Setup audio session and start recording
             audioService.setupAudioSession()
 
             do {
                 currentRecordingURL = try audioService.startRecording()
             } catch {
                 print("Failed to start recording: \(error)")
-                await MainActor.run {
-                    showRecordingOverlay = false
-                }
             }
         }
     }
@@ -109,18 +93,15 @@ struct MainContainerView: View {
     private func handleRecordingComplete() {
         guard let url = currentRecordingURL else { return }
 
-        // Create and save recording
         let recording = Recording(
             duration: audioService.currentTime,
             audioFileName: url.lastPathComponent
         )
         recordingStore.addRecording(recording)
-
-        // Auto-select the new recording
-        selectedRecording = recording
-
-        // Reset
         currentRecordingURL = nil
+
+        // Navigate to the new recording
+        navigationPath.append(recording)
 
         // Start transcription
         Task {
@@ -139,12 +120,6 @@ struct MainContainerView: View {
             updated.transcriptionStatus = .completed
             recordingStore.updateRecording(updated)
 
-            // Update selected recording after transcription
-            if selectedRecording?.id == updated.id {
-                selectedRecording = updated
-            }
-
-            // Generate AI summary with Apple Intelligence
             if !transcript.isEmpty {
                 await generateAISummary(for: &updated)
             }
@@ -152,10 +127,6 @@ struct MainContainerView: View {
             updated.transcriptionStatus = .failed
             print("Transcription failed: \(error)")
             recordingStore.updateRecording(updated)
-
-            if selectedRecording?.id == updated.id {
-                selectedRecording = updated
-            }
         }
     }
 
@@ -167,196 +138,125 @@ struct MainContainerView: View {
             recording.aiSummary = insights.summary
             recording.aiKeyPoints = insights.keyPoints
             recordingStore.updateRecording(recording)
-
-            // Update selected recording if it's the same one
-            if selectedRecording?.id == recording.id {
-                selectedRecording = recording
-            }
         } catch {
             print("AI summary generation failed: \(error)")
-            // Silent failure - transcript is still available
         }
     }
 }
 
-// MARK: - Sidebar Content
+// MARK: - Recording Root View (Primary Screen)
 
-/// Sidebar content for NavigationSplitView - iOS 26 Liquid Glass applied automatically
-struct SidebarContent: View {
-    @EnvironmentObject var recordingStore: RecordingStore
-    @Binding var selectedRecording: Recording?
-    let onNewRecording: () -> Void
-
-    var body: some View {
-        List(selection: $selectedRecording) {
-            // New Recording button
-            Section {
-                Button(action: onNewRecording) {
-                    Label("New Recording", systemImage: "plus.circle.fill")
-                        .foregroundStyle(.red)
-                }
-            }
-
-            // Recordings list
-            Section("Recordings") {
-                ForEach(recordingStore.recordings) { recording in
-                    SidebarRowView(recording: recording)
-                        .tag(recording)
-                }
-                .onDelete(perform: deleteRecordings)
-            }
-        }
-        .listStyle(.sidebar)
-    }
-
-    private func deleteRecordings(at offsets: IndexSet) {
-        for index in offsets {
-            let recording = recordingStore.recordings[index]
-
-            // Clear selection if deleting selected recording
-            if selectedRecording?.id == recording.id {
-                selectedRecording = recordingStore.recordings.first { $0.id != recording.id }
-            }
-
-            recordingStore.deleteRecording(recording)
-        }
-    }
-}
-
-// MARK: - Sidebar Recording Row
-
-/// Row view for sidebar recording list
-struct SidebarRowView: View {
-    let recording: Recording
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(recording.displayTitle)
-                .font(.body)
-                .lineLimit(1)
-
-            HStack(spacing: 8) {
-                Text(recording.formattedDuration)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if recording.transcriptionStatus == .inProgress {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                } else if recording.transcriptionStatus == .failed {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Recording Overlay View (iOS 26 Camera Style)
-
-// Note: PulsingModifier is defined in TimeDisplayView.swift
-
-/// Full-screen recording overlay with iOS 26 Camera app style
-/// - Ready state: Red circle button, "Tap to start" hint, close button
-/// - Recording state: Red square button (morphed), timer pill with pulsing dot
-struct RecordingOverlayView: View {
+/// The main recording screen - always visible as root
+struct RecordingRootView: View {
     @EnvironmentObject var audioService: AudioService
+
+    let onOpenSidebar: () -> Void
+    let onStop: () -> Void
+    let onStartRecording: () -> Void
+
+    // Rotating prompts state
+    @State private var currentPromptIndex = 0
+    @State private var promptOpacity: Double = 1.0
+    @State private var promptTimer: Timer?
+
+    // Glass effect namespace
     @Namespace private var buttonNamespace
 
-    let onStop: () -> Void
-    let onDismiss: () -> Void
-    let onStartRecording: () -> Void
+    private let prompts = [
+        "What do you want to talk about?",
+        "Tell me more about it...",
+        "What's on your mind?",
+        "Share your idea...",
+        "Keep going...",
+        "What else?",
+        "I'm listening...",
+        "Go on..."
+    ]
 
     var body: some View {
         ZStack {
-            // Full-screen visualizer (idle when not recording)
+            // Full-screen visualizer (disable hit testing so edge swipe works)
             LiquidAudioVisualizer(
                 audioLevel: audioService.audioLevel,
                 isRecording: audioService.isRecording,
                 isIdle: !audioService.isRecording
             )
+            .allowsHitTesting(false)
 
-            // Controls overlay
+            // UI overlay
             VStack(spacing: 0) {
-                // Top bar: Close button (only when NOT recording)
+                // Top bar: Sidebar button
                 HStack {
-                    if !audioService.isRecording {
-                        Button(action: onDismiss) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 40, height: 40)
-                        }
-                        .buttonStyle(.glass)
+                    Button(action: onOpenSidebar) {
+                        Image(systemName: "sidebar.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.black.opacity(0.8))
+                            .frame(width: 44, height: 44)
+                            .background(
+                                Circle()
+                                    .fill(.regularMaterial)
+                                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                            )
                     }
                     Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 60)
-
-                // Status pill
-                statusPill
-                    .padding(.top, 40)
+                .padding(.top, 16)
 
                 Spacer()
 
-                // Record/Stop button
+                // Rotating prompt
+                Text(prompts[currentPromptIndex])
+                    .font(.displayMedium)
+                    .foregroundStyle(.black.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .opacity(promptOpacity)
+                    .padding(.horizontal, 40)
+
+                Spacer()
+
+                // Record/Stop button with timer overlay
                 recordButton
+                    .overlay(alignment: .bottom) {
+                        // Simple timer (only when recording)
+                        if audioService.isRecording {
+                            Text(formatTime(audioService.currentTime))
+                                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.black.opacity(0.5))
+                                .monospacedDigit()
+                                .offset(y: 32)
+                        }
+                    }
                     .padding(.bottom, 80)
             }
         }
+        .navigationBarHidden(true)
+        .onAppear { startPromptRotation() }
+        .onDisappear { promptTimer?.invalidate() }
     }
 
-    // MARK: - Status Pill
-
-    @ViewBuilder
-    private var statusPill: some View {
-        if audioService.isRecording {
-            // Recording: Red pill with pulsing dot + REC + time
-            HStack(spacing: 12) {
-                // Pulsing red dot
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 12, height: 12)
-                    .modifier(PulsingModifier())
-
-                Text("REC")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.red)
-
-                Text(formatTime(audioService.currentTime))
-                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.white)
+    private func startPromptRotation() {
+        promptTimer = Timer.scheduledTimer(withTimeInterval: 6.0, repeats: true) { _ in
+            withAnimation(.easeOut(duration: 0.5)) {
+                promptOpacity = 0
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-            .glassEffect()
-        } else {
-            // Ready: Hint text
-            Text("Tap to start recording")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
-                .glassEffect()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                currentPromptIndex = (currentPromptIndex + 1) % prompts.count
+                withAnimation(.easeIn(duration: 0.5)) {
+                    promptOpacity = 1
+                }
+            }
         }
     }
-
-    // MARK: - Record/Stop Button (iOS 26 Liquid Glass)
 
     private var recordButton: some View {
         Button(action: toggleRecording) {
             ZStack {
-                // Inner shape - morphs circle → square
                 if audioService.isRecording {
-                    // STOP: Red rounded square
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 6)
                         .fill(Color.red)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 26, height: 26)
                 } else {
-                    // RECORD: Red circle
                     Circle()
                         .fill(Color.red)
                         .frame(width: 52, height: 52)
@@ -364,13 +264,10 @@ struct RecordingOverlayView: View {
             }
             .frame(width: 72, height: 72)
         }
-        .buttonStyle(.glass)
-        .contentShape(.circle)
-        .glassEffectID("recordButton", in: buttonNamespace)
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .circle)
         .sensoryFeedback(.impact(flexibility: .soft), trigger: audioService.isRecording)
     }
-
-    // MARK: - Actions
 
     private func toggleRecording() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
@@ -386,6 +283,177 @@ struct RecordingOverlayView: View {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+// MARK: - Sidebar Drawer
+
+/// Sidebar that slides in from the left
+struct SidebarDrawer: View {
+    @EnvironmentObject var recordingStore: RecordingStore
+    @Binding var isPresented: Bool
+    let onSelectRecording: (Recording) -> Void
+    let onNewRecording: () -> Void
+
+    @State private var dragOffset: CGFloat = 0
+
+    private let sidebarWidth: CGFloat = 300
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Dimmed background
+                if isPresented {
+                    Color.black
+                        .opacity(0.4 * Double(1 - abs(dragOffset) / sidebarWidth))
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isPresented = false
+                            }
+                        }
+                }
+
+                // Sidebar panel
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Header
+                        HStack {
+                            Text("midIDEA")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isPresented = false
+                                }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 32, height: 32)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 60)
+                        .padding(.bottom, 20)
+
+                        // New Recording button
+                        Button(action: onNewRecording) {
+                            Label("New Recording", systemImage: "plus.circle.fill")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                        }
+
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        // Recordings list
+                        if recordingStore.recordings.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "waveform")
+                                    .font(.system(size: 32))
+                                    .foregroundStyle(.tertiary)
+                                Text("No recordings yet")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 40)
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 4) {
+                                    ForEach(recordingStore.recordings) { recording in
+                                        SidebarDrawerRow(recording: recording)
+                                            .onTapGesture {
+                                                onSelectRecording(recording)
+                                            }
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                            }
+                        }
+
+                        Spacer()
+                    }
+                    .frame(width: sidebarWidth)
+                    .background(.regularMaterial)
+
+                    Spacer()
+                }
+                .offset(x: isPresented ? dragOffset : -sidebarWidth)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width < 0 {
+                                dragOffset = value.translation.width
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.width < -100 || value.predictedEndTranslation.width < -200 {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isPresented = false
+                                }
+                            }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                        }
+                )
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isPresented)
+    }
+}
+
+// MARK: - Sidebar Drawer Row
+
+private struct SidebarDrawerRow: View {
+    let recording: Recording
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Circle()
+                .fill(recording.transcriptionStatus == .completed ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    if recording.transcriptionStatus == .inProgress {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Image(systemName: recording.transcriptionStatus == .completed ? "checkmark" : "waveform")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(recording.transcriptionStatus == .completed ? .green : .secondary)
+                    }
+                }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(recording.displayTitle)
+                    .font(.body)
+                    .lineLimit(1)
+
+                Text(recording.formattedDuration)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.primary.opacity(0.05))
+        )
+        .contentShape(Rectangle())
     }
 }
 

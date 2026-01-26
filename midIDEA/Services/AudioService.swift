@@ -231,6 +231,9 @@ class AudioService: NSObject, ObservableObject {
         // Update Live Activity with audio level
         LiveActivityManager.shared.setAudioLevel(audioLevel)
 
+        // Check for stop request from Dynamic Island widget
+        checkForWidgetStopRequest()
+
         // Check max duration
         if currentTime >= Self.maxRecordingDuration {
             _ = stopRecording()
@@ -269,6 +272,21 @@ class AudioService: NSObject, ObservableObject {
     private func updatePlayback() {
         guard let player = audioPlayer, isPlaying else { return }
         currentTime = player.currentTime
+    }
+
+    // MARK: - Widget Communication
+
+    /// Check if the Dynamic Island widget requested to stop recording
+    private func checkForWidgetStopRequest() {
+        let defaults = UserDefaults(suiteName: "group.com.mididea.shared")
+        if defaults?.bool(forKey: "stopRecordingRequested") == true {
+            // Clear the flag first
+            defaults?.removeObject(forKey: "stopRecordingRequested")
+            defaults?.synchronize()
+
+            // Stop the recording
+            _ = stopRecording()
+        }
     }
 }
 
