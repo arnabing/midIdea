@@ -24,8 +24,9 @@ midIDEA is a native iOS voice recorder app with AI-powered transcription and ins
 - `MainContainerView` - Root container with NavigationStack and sidebar overlay
 - `RecordingRootView` - Main recording screen with visualizer, rotating prompts, record button
 - `SidebarDrawer` - Recordings list that slides in from left
-- `TranscriptDetailView` - View/edit transcript with playback controls
+- `TranscriptDetailView` - View/edit transcript with playback controls (uses `recordingId` lookup for reactive updates)
 - `LiquidAudioVisualizer` - Audio-reactive MeshGradient background (see below)
+- `ThinkingGlimmer` - Claude-like transcription loading indicator with shimmer animation
 
 ### LiquidAudioVisualizer
 Full-screen MeshGradient (4x4 grid, 16 points) with voice-reactive animation.
@@ -40,6 +41,12 @@ Full-screen MeshGradient (4x4 grid, 16 points) with voice-reactive animation.
 - Row clamping prevents mesh triangulation artifacts (Row 1: [0.12, 0.48], Row 2: [0.52, 0.88])
 - Cached color palettes eliminate per-frame `Color(hex:)` parsing
 - No `.drawingGroup()` or `.brightness()` modifiers (cause flickering)
+
+### ThinkingGlimmer
+Claude-like transcription loading indicator in `TranscriptBubbleView.swift`:
+- **Shimmer animation**: Gradient mask sweeps across text using `LinearGradient` with animated phase
+- **Rotating phrases**: Cycles through creative messages ("Transcribing...", "Listening closely...", "Processing audio...", etc.)
+- **Usage**: `ThinkingGlimmer()` replaces static spinners during `.inProgress` transcription status
 
 ## Next Steps: Voice Keyboard Extension
 
@@ -76,6 +83,7 @@ Cloud builds via Codemagic (see `codemagic.yaml`) - pushes to `main` or `develop
 - `RecordingStore` and `AudioService` are `@StateObject`s created at app root
 - Injected via `@EnvironmentObject` throughout the view hierarchy
 - Both classes are `@MainActor` isolated with `@Published` properties for reactive UI
+- **Navigation passes `UUID` not `Recording`**: Detail views look up recordings by ID from store to receive live updates (e.g., transcription status changes)
 
 ### Folder Structure
 ```
@@ -83,9 +91,9 @@ midIDEA/
 ├── App/              # App entry point, ContentView
 ├── Features/
 │   ├── Main/         # MainContainerView, RecordingRootView, SidebarDrawer
-│   ├── Detail/       # TranscriptDetailView
+│   ├── Detail/       # TranscriptDetailView, TranscriptBubbleView, ThinkingGlimmer
 │   ├── Recorder/     # Legacy recorder views (TalkboyRealisticView, etc.)
-│   └── Minimal/      # Onboarding views
+│   └── Minimal/      # LiquidAudioVisualizer, onboarding views
 ├── Services/         # AudioService, TranscriptionService, AIService
 ├── Models/           # Recording model, RecordingStore
 ├── Intents/          # Action Button / Siri Shortcuts (AppIntents)
@@ -121,11 +129,11 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 
 ### Button Styling
 ```swift
-// Interactive glass button (record button)
+// Interactive glass button (record button, sidebar button)
 .glassEffect(.regular.interactive(), in: .circle)
 
-// Material background (sidebar button)
-.background(Circle().fill(.regularMaterial))
+// All circular buttons use glass effect for consistent iOS 26 styling
+// Sidebar button uses .foregroundStyle(.black.opacity(0.8)) for visibility
 ```
 
 ### Key Points
@@ -147,8 +155,9 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 1. User taps record → `AudioService.startRecording()`
 2. Live Activity starts (Dynamic Island shows REC + timer)
 3. User taps stop → `AudioService.stopRecording()`
-4. Recording saved → Navigate to TranscriptDetailView
-5. Auto-transcription begins → AI summary generated
+4. Recording saved → Navigate to `TranscriptDetailView(recordingId:)`
+5. Auto-transcription begins → `ThinkingGlimmer` shows with shimmer animation
+6. Transcription completes → AI summary generated
 
 ## Required Permissions
 

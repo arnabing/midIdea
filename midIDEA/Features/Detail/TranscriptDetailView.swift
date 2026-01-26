@@ -2,74 +2,86 @@ import SwiftUI
 
 /// Full-screen transcript view with summary card and floating glass controls
 struct TranscriptDetailView: View {
-    let recording: Recording
+    let recordingId: UUID
 
+    @EnvironmentObject var recordingStore: RecordingStore
     @EnvironmentObject var audioService: AudioService
     @State private var showCopiedToast = false
 
+    /// Look up recording from store to get latest updates
+    private var recording: Recording? {
+        recordingStore.recordings.first { $0.id == recordingId }
+    }
+
     var body: some View {
-        ZStack {
-            // Light background
-            Color(.systemGray6)
-                .ignoresSafeArea()
+        Group {
+            if let recording = recording {
+                ZStack {
+                    // Light background
+                    Color(.systemGray6)
+                        .ignoresSafeArea()
 
-            // Scrollable content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Top spacing for navigation bar
-                    Spacer()
-                        .frame(height: 16)
+                    // Scrollable content
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Top spacing for navigation bar
+                            Spacer()
+                                .frame(height: 16)
 
-                    // Summary card (if available)
-                    if let summary = recording.summary, !summary.isEmpty {
-                        SummaryCard(summary: summary)
+                            // Summary card (if available)
+                            if let summary = recording.summary, !summary.isEmpty {
+                                SummaryCard(summary: summary)
+                                    .padding(.horizontal, 16)
+                            }
+
+                            // Transcript content (no container)
+                            transcriptContent(for: recording)
+                                .padding(.horizontal, 16)
+
+                            // Bottom spacing for media player
+                            Spacer()
+                                .frame(height: 130)
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+
+                    // Bottom media player only
+                    VStack {
+                        Spacer()
+
+                        MediaPlayerBar(recording: recording)
                             .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
                     }
-
-                    // Transcript content (no container)
-                    transcriptContent
-                        .padding(.horizontal, 16)
-
-                    // Bottom spacing for media player
-                    Spacer()
-                        .frame(height: 130)
                 }
-            }
-            .scrollIndicators(.hidden)
-
-            // Bottom media player only
-            VStack {
-                Spacer()
-
-                MediaPlayerBar(recording: recording)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-            }
-        }
-        .navigationTitle(recording.displayTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button(action: copyTranscript) {
-                        Label("Copy Transcript", systemImage: "doc.on.doc")
+                .navigationTitle(recording.displayTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button(action: { copyTranscript(from: recording) }) {
+                                Label("Copy Transcript", systemImage: "doc.on.doc")
+                            }
+                            Button(action: {}) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                            Divider()
+                            Button(role: .destructive, action: {}) {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
                     }
-                    Button(action: {}) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                    Divider()
-                    Button(role: .destructive, action: {}) {
-                        Label("Delete", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
-            }
-        }
-        .overlay(alignment: .top) {
-            if showCopiedToast {
-                copiedToast
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                .overlay(alignment: .top) {
+                    if showCopiedToast {
+                        copiedToast
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+            } else {
+                ContentUnavailableView("Recording not found", systemImage: "waveform")
             }
         }
     }
@@ -77,7 +89,7 @@ struct TranscriptDetailView: View {
     // MARK: - Transcript Content (No Container)
 
     @ViewBuilder
-    private var transcriptContent: some View {
+    private func transcriptContent(for recording: Recording) -> some View {
         switch recording.transcriptionStatus {
         case .completed:
             if let transcript = recording.transcript, !transcript.isEmpty {
@@ -91,14 +103,7 @@ struct TranscriptDetailView: View {
             }
 
         case .inProgress:
-            HStack(spacing: 12) {
-                ProgressView()
-                Text("Transcribing...")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            ThinkingGlimmer()
 
         case .failed:
             VStack(spacing: 8) {
@@ -157,7 +162,7 @@ struct TranscriptDetailView: View {
 
     // MARK: - Actions
 
-    private func copyTranscript() {
+    private func copyTranscript(from recording: Recording) {
         guard let transcript = recording.transcript, !transcript.isEmpty else { return }
         UIPasteboard.general.string = transcript
 
@@ -216,14 +221,18 @@ struct SummaryCard: View {
 }
 
 #Preview {
-    TranscriptDetailView(
-        recording: {
-            var r = Recording(duration: 125, audioFileName: "test.m4a")
-            r.transcript = "I have a dream that one day this nation will rise up and live out the true meaning of its creed: We hold these truths to be self-evident, that all men are created equal.\n\nI have a dream that one day on the red hills of Georgia, the sons of former slaves and the sons of former slave owners will be able to sit down together at the table of brotherhood."
-            r.summary = "Martin Luther King Jr.'s iconic speech about racial equality and the dream of a united America where people are judged by character, not skin color."
-            r.transcriptionStatus = .completed
-            return r
-        }()
-    )
-    .environmentObject(AudioService())
+    let previewRecording: Recording = {
+        var r = Recording(duration: 125, audioFileName: "test.m4a")
+        r.transcript = "I have a dream that one day this nation will rise up and live out the true meaning of its creed: We hold these truths to be self-evident, that all men are created equal.\n\nI have a dream that one day on the red hills of Georgia, the sons of former slaves and the sons of former slave owners will be able to sit down together at the table of brotherhood."
+        r.summary = "Martin Luther King Jr.'s iconic speech about racial equality and the dream of a united America where people are judged by character, not skin color."
+        r.transcriptionStatus = .completed
+        return r
+    }()
+
+    let store = RecordingStore()
+    store.recordings = [previewRecording]
+
+    return TranscriptDetailView(recordingId: previewRecording.id)
+        .environmentObject(store)
+        .environmentObject(AudioService())
 }

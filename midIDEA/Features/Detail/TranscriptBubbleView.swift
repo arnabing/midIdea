@@ -77,20 +77,7 @@ struct TranscriptBubbleView: View {
     }
 
     private var transcribingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(1.2)
-
-            Text("Transcribing...")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            Text("This may take a moment")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
+        ThinkingGlimmer()
     }
 
     private var failedView: some View {
@@ -147,4 +134,106 @@ struct TranscriptBubbleView: View {
         }()
     )
     .padding()
+}
+
+// MARK: - Shimmer Modifier
+
+/// Creates a shimmer effect by animating a gradient mask across the content
+struct Shimmer: ViewModifier {
+    @State private var phase: CGFloat = -1
+
+    var duration: Double
+    var bounce: Bool
+
+    init(duration: Double = 1.5, bounce: Bool = false) {
+        self.duration = duration
+        self.bounce = bounce
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .mask(
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: .black.opacity(0.4), location: phase - 0.3),
+                        .init(color: .black, location: phase),
+                        .init(color: .black.opacity(0.4), location: phase + 0.3)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .onAppear {
+                withAnimation(.linear(duration: duration).repeatForever(autoreverses: bounce)) {
+                    phase = 2
+                }
+            }
+    }
+}
+
+extension View {
+    /// Applies a shimmer animation effect
+    func shimmering(duration: Double = 1.5, bounce: Bool = false) -> some View {
+        modifier(Shimmer(duration: duration, bounce: bounce))
+    }
+}
+
+// MARK: - Thinking Glimmer Component
+
+/// Claude-like thinking indicator with shimmer effect and rotating phrases
+struct ThinkingGlimmer: View {
+    @State private var phraseIndex = 0
+    @State private var phraseOpacity: Double = 1.0
+
+    private let phrases = [
+        "Transcribing...",
+        "Listening closely...",
+        "Processing audio...",
+        "Understanding...",
+        "Analyzing speech...",
+        "Decoding words...",
+        "Piecing it together...",
+        "Almost there..."
+    ]
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Shimmer text
+            Text(phrases[phraseIndex])
+                .font(.body)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .shimmering(duration: 1.8)
+                .opacity(phraseOpacity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .onAppear {
+            startPhraseRotation()
+        }
+    }
+
+    private func startPhraseRotation() {
+        Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { _ in
+            // Fade out
+            withAnimation(.easeOut(duration: 0.3)) {
+                phraseOpacity = 0
+            }
+
+            // Change phrase and fade in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                phraseIndex = (phraseIndex + 1) % phrases.count
+                withAnimation(.easeIn(duration: 0.3)) {
+                    phraseOpacity = 1
+                }
+            }
+        }
+    }
+}
+
+#Preview("Thinking Glimmer") {
+    ThinkingGlimmer()
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding()
 }

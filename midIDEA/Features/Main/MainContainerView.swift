@@ -9,6 +9,7 @@ struct MainContainerView: View {
     // Navigation state
     @State private var showSidebar = false
     @State private var navigationPath = NavigationPath()
+    @State private var selectedRecordingId: UUID?
 
     // Recording state
     @State private var currentRecordingURL: URL?
@@ -21,8 +22,8 @@ struct MainContainerView: View {
                 onStop: stopRecording,
                 onStartRecording: actuallyStartRecording
             )
-            .navigationDestination(for: Recording.self) { recording in
-                TranscriptDetailView(recording: recording)
+            .navigationDestination(for: UUID.self) { recordingId in
+                TranscriptDetailView(recordingId: recordingId)
             }
         }
         .highPriorityGesture(navigationPath.isEmpty ? edgeSwipeGesture : nil)
@@ -30,12 +31,15 @@ struct MainContainerView: View {
             // Sidebar drawer from left
             SidebarDrawer(
                 isPresented: $showSidebar,
+                selectedRecordingId: $selectedRecordingId,
                 onSelectRecording: { recording in
                     showSidebar = false
-                    navigationPath.append(recording)
+                    selectedRecordingId = recording.id
+                    navigationPath.append(recording.id)
                 },
                 onNewRecording: {
                     showSidebar = false
+                    selectedRecordingId = nil
                     // Already on recording screen, just close sidebar
                 }
             )
@@ -100,8 +104,8 @@ struct MainContainerView: View {
         recordingStore.addRecording(recording)
         currentRecordingURL = nil
 
-        // Navigate to the new recording
-        navigationPath.append(recording)
+        // Navigate to the new recording (pass ID so view observes store updates)
+        navigationPath.append(recording.id)
 
         // Start transcription
         Task {
@@ -193,15 +197,12 @@ struct RecordingRootView: View {
                 HStack {
                     Button(action: onOpenSidebar) {
                         Image(systemName: "sidebar.left")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(.black.opacity(0.8))
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.regularMaterial)
-                                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-                            )
                     }
+                    .frame(width: 48, height: 48)
+                    .glassEffect(.regular.interactive(), in: .circle)
+
                     Spacer()
                 }
                 .padding(.horizontal, 20)
@@ -307,18 +308,29 @@ struct RecordingRootView: View {
     }
 }
 
-// MARK: - Sidebar Drawer
+// MARK: - Sidebar Drawer (Clean Style)
 
-/// Sidebar that slides in from the left
+/// Sidebar that slides in from the left - clean minimal design like Claude app
 struct SidebarDrawer: View {
     @EnvironmentObject var recordingStore: RecordingStore
     @Binding var isPresented: Bool
+    @Binding var selectedRecordingId: UUID?
     let onSelectRecording: (Recording) -> Void
     let onNewRecording: () -> Void
 
     @State private var dragOffset: CGFloat = 0
+    @State private var searchText = ""
 
     private let sidebarWidth: CGFloat = 300
+
+    private var filteredRecordings: [Recording] {
+        if searchText.isEmpty {
+            return recordingStore.recordings
+        }
+        return recordingStore.recordings.filter { recording in
+            recording.displayTitle.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -338,47 +350,38 @@ struct SidebarDrawer: View {
                 // Sidebar panel
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Header
-                        HStack {
-                            Text("midIDEA")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            Spacer()
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    isPresented = false
-                                }
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 16, weight: .semibold))
+                        // Search bar + New button row
+                        HStack(spacing: 12) {
+                            // Search field
+                            HStack(spacing: 8) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 15))
                                     .foregroundStyle(.secondary)
-                                    .frame(width: 32, height: 32)
+                                TextField("Search", text: $searchText)
+                                    .font(.body)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+
+                            // New recording button
+                            Button(action: onNewRecording) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.primary)
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         .padding(.top, 60)
-                        .padding(.bottom, 20)
-
-                        // New Recording button
-                        Button(action: onNewRecording) {
-                            Label("New Recording", systemImage: "plus.circle.fill")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                        }
-
-                        Divider()
-                            .padding(.vertical, 8)
+                        .padding(.bottom, 16)
 
                         // Recordings list
-                        if recordingStore.recordings.isEmpty {
+                        if filteredRecordings.isEmpty {
                             VStack(spacing: 12) {
-                                Image(systemName: "waveform")
+                                Image(systemName: searchText.isEmpty ? "waveform" : "magnifyingglass")
                                     .font(.system(size: 32))
                                     .foregroundStyle(.tertiary)
-                                Text("No recordings yet")
+                                Text(searchText.isEmpty ? "No recordings yet" : "No results")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -386,22 +389,24 @@ struct SidebarDrawer: View {
                             .padding(.top, 40)
                         } else {
                             ScrollView {
-                                LazyVStack(spacing: 4) {
-                                    ForEach(recordingStore.recordings) { recording in
-                                        SidebarDrawerRow(recording: recording)
-                                            .onTapGesture {
-                                                onSelectRecording(recording)
-                                            }
+                                LazyVStack(spacing: 0) {
+                                    ForEach(filteredRecordings) { recording in
+                                        SidebarRow(
+                                            recording: recording,
+                                            isSelected: selectedRecordingId == recording.id,
+                                            onSelect: { onSelectRecording(recording) },
+                                            onDelete: { recordingStore.deleteRecording(recording) }
+                                        )
                                     }
                                 }
-                                .padding(.horizontal, 12)
+                                .padding(.bottom, 20)
                             }
                         }
 
                         Spacer()
                     }
                     .frame(width: sidebarWidth)
-                    .background(.regularMaterial)
+                    .background(Color(uiColor: .systemBackground))
 
                     Spacer()
                 }
@@ -430,51 +435,51 @@ struct SidebarDrawer: View {
     }
 }
 
-// MARK: - Sidebar Drawer Row
+// MARK: - Sidebar Row (Simple Text Style)
 
-private struct SidebarDrawerRow: View {
+private struct SidebarRow: View {
     let recording: Recording
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Icon
-            Circle()
-                .fill(recording.transcriptionStatus == .completed ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
-                .frame(width: 40, height: 40)
-                .overlay {
-                    if recording.transcriptionStatus == .inProgress {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    } else {
-                        Image(systemName: recording.transcriptionStatus == .completed ? "checkmark" : "waveform")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(recording.transcriptionStatus == .completed ? .green : .secondary)
-                    }
-                }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recording.displayTitle)
-                    .font(.body)
-                    .lineLimit(1)
-
-                Text(recording.formattedDuration)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        Button(action: onSelect) {
+            Text(recording.displayTitle)
+                .font(.body)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(isSelected ? Color.primary.opacity(0.1) : Color.clear)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                shareRecording()
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
             }
 
-            Spacer()
+            Divider()
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.tertiary)
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.primary.opacity(0.05))
+    }
+
+    private func shareRecording() {
+        let activityVC = UIActivityViewController(
+            activityItems: [recording.audioURL],
+            applicationActivities: nil
         )
-        .contentShape(Rectangle())
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            rootVC.present(activityVC, animated: true)
+        }
     }
 }
 
