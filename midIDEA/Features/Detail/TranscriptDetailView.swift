@@ -49,7 +49,7 @@ struct TranscriptDetailView: View {
                     VStack {
                         Spacer()
 
-                        MediaPlayerBar(recording: recording)
+                        WaveformPlayer(recording: recording)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 8)
                     }

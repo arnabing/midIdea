@@ -34,6 +34,8 @@
 		A1000042001 /* TranscriptDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042000 /* TranscriptDetailView.swift */; };
 		A1000043001 /* TranscriptBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000043000 /* TranscriptBubbleView.swift */; };
 		A1000044001 /* MediaPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000044000 /* MediaPlayerBar.swift */; };
+		A1000045001 /* WaveformPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000045000 /* WaveformPlayer.swift */; };
+		A1000046001 /* WaveformGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000046000 /* WaveformGenerator.swift */; };
 		A1EMBED0001 /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -93,6 +95,8 @@
 		A1000042000 /* TranscriptDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptDetailView.swift; sourceTree = "<group>"; };
 		A1000043000 /* TranscriptBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptBubbleView.swift; sourceTree = "<group>"; };
 		A1000044000 /* MediaPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerBar.swift; sourceTree = "<group>"; };
+		A1000045000 /* WaveformPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformPlayer.swift; sourceTree = "<group>"; };
+		A1000046000 /* WaveformGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformGenerator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -216,6 +220,7 @@
 				A1000005000 /* AudioService.swift */,
 				A1000006000 /* HapticService.swift */,
 				A1000007000 /* TranscriptionService.swift */,
+				A1000046000 /* WaveformGenerator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -291,6 +296,7 @@
 				A1000042000 /* TranscriptDetailView.swift */,
 				A1000043000 /* TranscriptBubbleView.swift */,
 				A1000044000 /* MediaPlayerBar.swift */,
+				A1000045000 /* WaveformPlayer.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -430,6 +436,8 @@
 				A1000042001 /* TranscriptDetailView.swift in Sources */,
 				A1000043001 /* TranscriptBubbleView.swift in Sources */,
 				A1000044001 /* MediaPlayerBar.swift in Sources */,
+				A1000045001 /* WaveformPlayer.swift in Sources */,
+				A1000046001 /* WaveformGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
