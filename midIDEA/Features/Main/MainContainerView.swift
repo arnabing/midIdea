@@ -97,18 +97,35 @@ struct MainContainerView: View {
     private func handleRecordingComplete() {
         guard let url = currentRecordingURL else { return }
 
-        let recording = Recording(
-            duration: audioService.currentTime,
-            audioFileName: url.lastPathComponent
-        )
-        recordingStore.addRecording(recording)
-        currentRecordingURL = nil
-
-        // Navigate to the new recording (pass ID so view observes store updates)
-        navigationPath.append(recording.id)
-
-        // Start transcription
         Task {
+            var recording = Recording(
+                duration: audioService.currentTime,
+                audioFileName: url.lastPathComponent
+            )
+
+            // Pre-generate waveform BEFORE adding recording
+            do {
+                let samples = try await WaveformGenerator.generate(
+                    from: url,
+                    sampleCount: 200
+                )
+                recording.waveformSamples = samples  // In-memory cache (instant)
+
+                // Fire-and-forget disk write (don't block navigation)
+                Task.detached(priority: .utility) {
+                    try? recording.saveWaveform(samples)
+                }
+            } catch {
+                print("Waveform pre-generation failed: \(error)")
+                // Continue without waveform - will generate on-demand
+            }
+
+            // Add to store and navigate immediately
+            recordingStore.addRecording(recording)
+            currentRecordingURL = nil
+            navigationPath.append(recording.id)
+
+            // Start transcription
             await transcribe(recording)
         }
     }

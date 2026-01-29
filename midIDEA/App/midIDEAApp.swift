@@ -7,6 +7,8 @@ struct midIDEAApp: App {
     @StateObject private var recordingStore = RecordingStore()
     @StateObject private var audioService = AudioService()
 
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         configureAudioSession()
         registerAppShortcuts()
@@ -17,6 +19,14 @@ struct midIDEAApp: App {
             ContentView()
                 .environmentObject(recordingStore)
                 .environmentObject(audioService)
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .background {
+                // Force immediate save when app backgrounds
+                Task {
+                    await recordingStore.forceSave()
+                }
+            }
         }
     }
 
