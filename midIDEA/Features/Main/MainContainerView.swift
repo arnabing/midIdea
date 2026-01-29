@@ -185,6 +185,7 @@ struct RecordingRootView: View {
 
     // Visual style for experimenting (3-finger tap to cycle)
     @State private var visualStyle: VisualizerStyle = .liquidOcean
+    @State private var showStyleName = false
 
     private let prompts = [
         "What do you want to talk about?",
@@ -256,16 +257,33 @@ struct RecordingRootView: View {
         .onAppear { startPromptRotation() }
         .onDisappear { promptTimer?.invalidate() }
         .contentShape(Rectangle())  // Make entire area respond to gestures
+        .overlay(alignment: .top) {
+            if showStyleName {
+                Text(visualStyle.rawValue)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    .padding(.top, 80)
+            }
+        }
         .simultaneousGesture(
             TapGesture(count: 3)
                 .onEnded { _ in
-                    // Toggle between visual styles: Ocean ↔ Plasma
+                    // Cycle through all visual styles
+                    let allStyles = VisualizerStyle.allCases
+                    let currentIndex = allStyles.firstIndex(of: visualStyle) ?? 0
+                    let nextIndex = (currentIndex + 1) % allStyles.count
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        switch visualStyle {
-                        case .liquidOcean:
-                            visualStyle = .plasmaPulse
-                        case .plasmaPulse:
-                            visualStyle = .liquidOcean
+                        visualStyle = allStyles[nextIndex]
+                        showStyleName = true
+                    }
+                    // Auto-hide after 1.5s
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            showStyleName = false
                         }
                     }
                     // Haptic feedback

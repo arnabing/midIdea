@@ -19,6 +19,8 @@ enum VisualizerColorMode: String, CaseIterable {
 enum VisualizerStyle: String, CaseIterable {
     case liquidOcean = "Liquid Ocean"       // Smooth ocean waves
     case plasmaPulse = "Plasma Pulse"       // High contrast dramatic
+    case breathingAura = "Breathing Aura"   // Alive idle, cool→warm crossfade
+    case radiantPulse = "Radiant Pulse"     // Radial center breathing, neon energy
 }
 
 // MARK: - Cached Color Palettes (Pre-computed, not per-frame)
@@ -64,6 +66,38 @@ private enum CachedColors {
         Color(hex: "ffa502"), Color(hex: "ee5a24"), Color(hex: "ff4757"), Color(hex: "ffa502"),
         Color(hex: "ff9ff3"), Color(hex: "ff4757"), Color(hex: "c44569"), Color(hex: "ff9ff3"),
         Color(hex: "ff6b6b"), Color(hex: "ffa502"), Color(hex: "ff9ff3"), Color(hex: "ff6b6b")
+    ]
+
+    // Breathing Aura - cool (idle) palette: deep blues/purples
+    static let auraCool: [Color] = [
+        Color(hex: "1A1A3E"), Color(hex: "2B2D6E"), Color(hex: "1E2056"), Color(hex: "1A1A3E"),
+        Color(hex: "2B2D6E"), Color(hex: "3A3F9F"), Color(hex: "4B4FCF"), Color(hex: "2B2D6E"),
+        Color(hex: "1E2056"), Color(hex: "4B4FCF"), Color(hex: "3A3F9F"), Color(hex: "1E2056"),
+        Color(hex: "1A1A3E"), Color(hex: "2B2D6E"), Color(hex: "1E2056"), Color(hex: "1A1A3E")
+    ]
+
+    // Breathing Aura - warm (speaking) palette: ambers/whites
+    static let auraWarm: [Color] = [
+        Color(hex: "FFF8E7"), Color(hex: "FFE4B5"), Color(hex: "FFF0D0"), Color(hex: "FFF8E7"),
+        Color(hex: "FFD080"), Color(hex: "FFB347"), Color(hex: "FFA500"), Color(hex: "FFD080"),
+        Color(hex: "FFF0D0"), Color(hex: "FFFFFF"), Color(hex: "FFFAF0"), Color(hex: "FFF0D0"),
+        Color(hex: "FFF8E7"), Color(hex: "FFE4B5"), Color(hex: "FFF0D0"), Color(hex: "FFF8E7")
+    ]
+
+    // Radiant Pulse - pastel (idle) palette
+    static let radiantPastel: [Color] = [
+        Color(hex: "E8D5F5"), Color(hex: "D5E8F5"), Color(hex: "F5D5E8"), Color(hex: "E8D5F5"),
+        Color(hex: "D5F5E8"), Color(hex: "C8B8E8"), Color(hex: "B8D8E8"), Color(hex: "D5F5E8"),
+        Color(hex: "F5E8D5"), Color(hex: "B8E8D8"), Color(hex: "E8B8C8"), Color(hex: "F5E8D5"),
+        Color(hex: "E8D5F5"), Color(hex: "D5E8F5"), Color(hex: "F5D5E8"), Color(hex: "E8D5F5")
+    ]
+
+    // Radiant Pulse - neon (speaking) palette
+    static let radiantNeon: [Color] = [
+        Color(hex: "FF00FF"), Color(hex: "00FFFF"), Color(hex: "FF0080"), Color(hex: "FF00FF"),
+        Color(hex: "00FF80"), Color(hex: "8000FF"), Color(hex: "FF4000"), Color(hex: "00FF80"),
+        Color(hex: "FFFF00"), Color(hex: "00FF40"), Color(hex: "FF0040"), Color(hex: "FFFF00"),
+        Color(hex: "FF00FF"), Color(hex: "00FFFF"), Color(hex: "FF0080"), Color(hex: "FF00FF")
     ]
 
     // Plasma pulse - high contrast
@@ -187,9 +221,9 @@ struct LiquidAudioVisualizer: View {
             }
         }
         .onAppear {
-            // Start ambient animation only for styles that use it (Siri Glow, Plasma Pulse)
-            // liquidOcean doesn't use animationPhase - all motion is time-based
-            if visualStyle != .liquidOcean {
+            // Start ambient animation only for styles that use animationPhase (Plasma Pulse)
+            // liquidOcean, breathingAura, radiantPulse use time-based motion directly
+            if visualStyle == .plasmaPulse {
                 withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
                     animationPhase = true
                 }
@@ -197,7 +231,7 @@ struct LiquidAudioVisualizer: View {
         }
         .onChange(of: visualStyle) { _, newStyle in
             // Start/stop ambient animation when switching styles
-            if newStyle != .liquidOcean && !animationPhase {
+            if newStyle == .plasmaPulse && !animationPhase {
                 withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
                     animationPhase = true
                 }
@@ -232,6 +266,30 @@ struct LiquidAudioVisualizer: View {
                 smoothsColors: true
             )
             .saturation(1.5)
+
+        case .breathingAura:
+            let breathWeight = max(0, 1 - Double(physics.smoothed) * 3)
+            let auraOpacity = 0.4 + breathWeight * 0.45 * (0.5 + 0.5 * sin(time * 1.2566)) // 5s sine
+                + Double(physics.smoothed) * 0.5
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: auraPoints(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                colors: auraColors(time: time, smoothed: physics.smoothed),
+                smoothsColors: true
+            )
+            .opacity(min(1.0, auraOpacity))
+            .saturation(1.3)
+
+        case .radiantPulse:
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: radiantPoints(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                colors: radiantColors(time: time, smoothed: physics.smoothed, peak: physics.peak),
+                smoothsColors: true
+            )
+            .saturation(1.4)
         }
     }
 
@@ -412,6 +470,207 @@ struct LiquidAudioVisualizer: View {
             // Edges more transparent
             let baseOpacity: Double = row == 0 || row == 3 ? 0.5 : 0.85
             return color.opacity(min(1.0, (baseOpacity + centerBoost) * boost))
+        }
+    }
+
+    // MARK: - Breathing Aura Points
+
+    /// Breathing Aura: visible idle breathing with X-axis drift, 10x dynamic range.
+    /// 5s sine cycle moves rows ±0.06 when idle, audio crossfades to voice-driven motion.
+    private func auraPoints(time: Double, smoothed: Float, peak: Float) -> [SIMD2<Float>] {
+        let audio = Double(smoothed)
+        let breathWeight = max(0, 1 - audio * 3)  // Fades out fast as voice takes over
+        let breathCycle = sin(time * 1.2566)  // 5s period (2π/5)
+        let breathAmp: Float = Float(breathWeight * 0.06)  // ±0.06 when idle
+        let audioAmp: Float = Float(audio * 0.30)  // Up to 0.30 when speaking (10x range from ~0.03 idle)
+        let amp = breathAmp + audioAmp
+
+        // X-axis drift: 7s horizontal sine for elliptical Lissajous (interior points only)
+        let xDrift = Float(breathWeight * 0.04 * sin(time * 0.8976))  // 2π/7
+
+        let explosion = min(peak * 0.15, 0.12)
+
+        func wave(_ phase: Double, _ intensity: Float) -> Float {
+            Float(sin(time * 0.08 + phase) * Double(amp * intensity))
+                + Float(breathCycle) * breathAmp * intensity
+        }
+
+        func clampRow1(_ y: Float) -> Float { max(0.12, min(0.48, y)) }
+        func clampRow2(_ y: Float) -> Float { max(0.52, min(0.88, y)) }
+
+        func radialPush(_ x: Float, _ y: Float) -> SIMD2<Float> {
+            let dx = x - 0.5
+            let dy = y - 0.5
+            let dist = sqrt(dx * dx + dy * dy)
+            guard dist > 0.001 else { return SIMD2(x, y) }
+            let newX = max(0.02, min(0.98, x + (dx / dist) * explosion))
+            let newY = max(0.02, min(0.98, y + (dy / dist) * explosion))
+            return SIMD2(newX, newY)
+        }
+
+        let basePoints: [(Float, Float)] = [
+            (0, 0), (0.33, 0), (0.66, 0), (1, 0),
+
+            (0, clampRow1(0.33 + wave(0, 0.8))),
+            (max(0.02, min(0.98, 0.33 + xDrift)), clampRow1(0.33 + wave(0.3, 1.0))),
+            (max(0.02, min(0.98, 0.66 - xDrift)), clampRow1(0.33 + wave(0.6, 1.0))),
+            (1, clampRow1(0.33 + wave(0.9, 0.8))),
+
+            (0, clampRow2(0.66 + wave(1.5, 0.8))),
+            (max(0.02, min(0.98, 0.33 - xDrift)), clampRow2(0.66 + wave(1.8, 1.0))),
+            (max(0.02, min(0.98, 0.66 + xDrift)), clampRow2(0.66 + wave(2.1, 1.0))),
+            (1, clampRow2(0.66 + wave(2.4, 0.8))),
+
+            (0, 1), (0.33, 1), (0.66, 1), (1, 1)
+        ]
+
+        return basePoints.enumerated().map { index, point in
+            if [5, 6, 9, 10].contains(index) {
+                return radialPush(point.0, point.1)
+            }
+            return SIMD2(point.0, point.1)
+        }
+    }
+
+    /// Breathing Aura colors: cool blues/purples when idle → warm amber/white when speaking.
+    /// Center points flash white-hot on peaks.
+    private func auraColors(time: Double, smoothed: Float) -> [Color] {
+        let audio = Double(smoothed)
+        let warmth = min(1.0, audio * 2.5)  // 0→1 crossfade threshold
+
+        return (0..<16).map { i in
+            let cool = CachedColors.auraCool[i]
+            let warm = CachedColors.auraWarm[i]
+            let isCenter = [5, 6, 9, 10].contains(i)
+            let row = i / 4
+            let baseOpacity: Double = (row == 0 || row == 3) ? 0.7 : 0.9
+
+            // Crossfade cool→warm based on audio level
+            if warmth < 0.01 {
+                return cool.opacity(baseOpacity)
+            } else if warmth > 0.99 {
+                let centerFlash = isCenter ? min(0.3, audio * 0.5) : 0
+                return warm.opacity(min(1.0, baseOpacity + centerFlash))
+            } else {
+                // Blend by mixing opacity-weighted layers
+                let centerFlash = isCenter ? min(0.3, audio * 0.5) : 0
+                // Use warm color with warmth-weighted opacity for crossfade effect
+                return warm.opacity(min(1.0, baseOpacity * warmth + centerFlash))
+                    // Note: true color blending requires both layers; we approximate with warm dominance
+            }
+        }
+    }
+
+    // MARK: - Radiant Pulse Points
+
+    /// Radiant Pulse: radial breathing from center, multi-frequency motion, adaptive speed.
+    /// Interior points pulse toward/away from (0.5, 0.5) instead of row-based waves.
+    private func radiantPoints(time: Double, smoothed: Float, peak: Float) -> [SIMD2<Float>] {
+        let audio = Double(smoothed)
+
+        // Adaptive breath speed: 6s idle → 2s at full voice
+        let breathSpeed = 1.047 + audio * 2.094  // 2π/6 to 2π/2
+        let breathPhase = time * breathSpeed
+
+        // Multi-frequency: 3 layered sines for complex non-repeating shimmer
+        func multiSine(_ t: Double, _ offset: Double) -> Double {
+            sin(t * 0.4 + offset) * 0.5
+            + sin(t * 1.1 + offset * 1.3) * 0.3
+            + sin(t * 2.3 + offset * 0.7) * 0.2
+        }
+
+        // Harmonic wave: fundamental + 1.7x harmonic
+        func harmonicWave(_ phase: Double) -> Double {
+            sin(phase) * 0.7 + sin(phase * 1.7) * 0.3
+        }
+
+        let baseAmp: Float = 0.06
+        let audioAmp: Float = Float(audio * 0.25)
+        let amp = baseAmp + audioAmp
+
+        // Stronger peak explosions (cap at 0.20 vs 0.12 in Ocean)
+        let explosion = min(peak * 0.25, 0.20)
+
+        func clampRow1(_ y: Float) -> Float { max(0.12, min(0.48, y)) }
+        func clampRow2(_ y: Float) -> Float { max(0.52, min(0.88, y)) }
+
+        // Radial pulse: interior points breathe toward/away from center
+        func radialBreath(_ x: Float, _ y: Float, index: Int) -> SIMD2<Float> {
+            let dx = x - 0.5
+            let dy = y - 0.5
+            let dist = sqrt(dx * dx + dy * dy)
+            guard dist > 0.001 else { return SIMD2(x, y) }
+
+            let breathOffset = harmonicWave(breathPhase + Double(index) * 0.5)
+            let radialAmp = Double(amp) * 0.5 * breathOffset
+            let explodeAmp = Double(explosion)
+
+            let totalPush = Float(radialAmp + explodeAmp)
+            let newX = max(0.02, min(0.98, x + (dx / dist) * totalPush))
+            let newY = y + (dy / dist) * totalPush  // Y will be clamped by row
+            return SIMD2(newX, newY)
+        }
+
+        let shimmer = multiSine(time, 0)
+
+        let basePoints: [(Float, Float)] = [
+            (0, 0), (0.33, 0), (0.66, 0), (1, 0),
+
+            (0, clampRow1(0.33 + Float(shimmer) * amp * 0.5)),
+            (0.33, clampRow1(0.33 + Float(multiSine(time, 1.0)) * amp)),
+            (0.66, clampRow1(0.33 + Float(multiSine(time, 2.0)) * amp)),
+            (1, clampRow1(0.33 + Float(multiSine(time, 3.0)) * amp * 0.5)),
+
+            (0, clampRow2(0.66 + Float(multiSine(time, 4.0)) * amp * 0.5)),
+            (0.33, clampRow2(0.66 + Float(multiSine(time, 5.0)) * amp)),
+            (0.66, clampRow2(0.66 + Float(multiSine(time, 6.0)) * amp)),
+            (1, clampRow2(0.66 + Float(multiSine(time, 7.0)) * amp * 0.5)),
+
+            (0, 1), (0.33, 1), (0.66, 1), (1, 1)
+        ]
+
+        // Apply radial breathing to interior points
+        return basePoints.enumerated().map { index, point in
+            if [5, 6, 9, 10].contains(index) {
+                let breathed = radialBreath(point.0, point.1, index: index)
+                // Re-clamp Y after radial push
+                let clampedY: Float
+                if index < 8 {
+                    clampedY = clampRow1(breathed.y)
+                } else {
+                    clampedY = clampRow2(breathed.y)
+                }
+                return SIMD2(breathed.x, clampedY)
+            }
+            return SIMD2(point.0, point.1)
+        }
+    }
+
+    /// Radiant Pulse colors: muted pastels when idle, fully saturated neons when speaking.
+    /// Crossfade at smoothed=0.5.
+    private func radiantColors(time: Double, smoothed: Float, peak: Float) -> [Color] {
+        let audio = Double(smoothed)
+        let neonMix = min(1.0, audio * 2.0)  // 0→1 crossfade, full neon at smoothed=0.5
+        let peakFlash = Double(peak)
+
+        return (0..<16).map { i in
+            let pastel = CachedColors.radiantPastel[i]
+            let neon = CachedColors.radiantNeon[i]
+            let isCenter = [5, 6, 9, 10].contains(i)
+            let row = i / 4
+            let baseOpacity: Double = (row == 0 || row == 3) ? 0.5 : 0.85
+
+            let centerBoost = isCenter ? peakFlash * 0.4 : 0
+            let boost = 0.6 + audio * 0.4 + peakFlash * 0.2
+
+            if neonMix < 0.01 {
+                return pastel.opacity(min(1.0, baseOpacity * boost))
+            } else if neonMix > 0.99 {
+                return neon.opacity(min(1.0, (baseOpacity + centerBoost) * boost))
+            } else {
+                // Crossfade: use neon with neonMix-weighted opacity
+                return neon.opacity(min(1.0, (baseOpacity + centerBoost) * boost * neonMix))
+            }
         }
     }
 
@@ -636,6 +895,58 @@ struct NoiseTextureView: View {
             isRecording: true,
             isIdle: false,
             colorMode: .sunset
+        )
+    }
+    .ignoresSafeArea()
+}
+
+#Preview("Breathing Aura - Idle") {
+    ZStack {
+        Color(hex: "0A0A0F")
+        LiquidAudioVisualizer(
+            audioLevel: -60,
+            isRecording: false,
+            isIdle: true,
+            visualStyle: .breathingAura
+        )
+    }
+    .ignoresSafeArea()
+}
+
+#Preview("Breathing Aura - Speaking") {
+    ZStack {
+        Color(hex: "0A0A0F")
+        LiquidAudioVisualizer(
+            audioLevel: -15,
+            isRecording: true,
+            isIdle: false,
+            visualStyle: .breathingAura
+        )
+    }
+    .ignoresSafeArea()
+}
+
+#Preview("Radiant Pulse - Idle") {
+    ZStack {
+        Color(hex: "0A0A0F")
+        LiquidAudioVisualizer(
+            audioLevel: -60,
+            isRecording: false,
+            isIdle: true,
+            visualStyle: .radiantPulse
+        )
+    }
+    .ignoresSafeArea()
+}
+
+#Preview("Radiant Pulse - Speaking") {
+    ZStack {
+        Color(hex: "0A0A0F")
+        LiquidAudioVisualizer(
+            audioLevel: -15,
+            isRecording: true,
+            isIdle: false,
+            visualStyle: .radiantPulse
         )
     }
     .ignoresSafeArea()

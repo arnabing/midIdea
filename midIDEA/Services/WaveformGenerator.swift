@@ -45,16 +45,16 @@ struct WaveformGenerator {
         }
 
         let channelDataPointer = channelData[0]
-        var samples: [Float] = []
+        var rawRmsSamples: [Float] = []  // Intermediate buffer
 
-        // Downsample and normalize
+        // First pass: Calculate all RMS values
         for sampleIndex in 0..<sampleCount {
             let startFrame = sampleIndex * framesPerSample
             let endFrame = min(startFrame + framesPerSample, Int(frameCount))
             let frameRange = endFrame - startFrame
 
             guard frameRange > 0 else {
-                samples.append(0.0)
+                rawRmsSamples.append(0.0)
                 continue
             }
 
@@ -66,8 +66,21 @@ struct WaveformGenerator {
             }
 
             let rms = sqrt(sum / Float(frameRange))
-            let normalizedValue = min(1.0, max(0.0, rms * 5.0)) // Amplify for visibility
-            samples.append(normalizedValue)
+            rawRmsSamples.append(rms)
+        }
+
+        // Find maximum RMS for relative normalization
+        let maxRms = rawRmsSamples.max() ?? 0.01  // Fallback to prevent divide-by-zero
+
+        // Second pass: Normalize relative to peak
+        var samples: [Float] = []
+        for rms in rawRmsSamples {
+            if maxRms > 0.0001 {  // Silence threshold
+                let normalized = min(1.0, rms / maxRms)
+                samples.append(normalized)
+            } else {
+                samples.append(0.0)  // Pure silence → flat line
+            }
         }
 
         return samples

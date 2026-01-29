@@ -15,6 +15,9 @@ struct Recording: Identifiable, Codable, Hashable {
     // Session linking for resume functionality
     var sessionId: UUID?
 
+    // Cached waveform data for instant display
+    var waveformSamples: [Float]?
+
     init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
@@ -39,6 +42,11 @@ struct Recording: Identifiable, Codable, Hashable {
 
     var audioURL: URL {
         Recording.recordingsDirectory.appendingPathComponent(audioFileName)
+    }
+
+    var waveformURL: URL {
+        Recording.recordingsDirectory
+            .appendingPathComponent("\(id.uuidString).waveform")
     }
 
     var displayTitle: String {
@@ -69,6 +77,23 @@ struct Recording: Identifiable, Codable, Hashable {
     var summary: String? {
         get { aiSummary }
         set { aiSummary = newValue }
+    }
+
+    /// Save waveform samples to disk
+    func saveWaveform(_ samples: [Float]) throws {
+        let data = try JSONEncoder().encode(samples)
+        try data.write(to: waveformURL)
+    }
+
+    /// Load waveform samples from disk
+    func loadWaveform() -> [Float]? {
+        guard FileManager.default.fileExists(atPath: waveformURL.path) else {
+            return nil
+        }
+        guard let data = try? Data(contentsOf: waveformURL) else {
+            return nil
+        }
+        return try? JSONDecoder().decode([Float].self, from: data)
     }
 
     static var recordingsDirectory: URL {

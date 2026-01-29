@@ -7,6 +7,10 @@ struct WaveformPlayer: View {
     @EnvironmentObject var audioService: AudioService
     @State private var samples: [Float] = []
     @State private var isLoading = true
+    @State private var interpolator = PlaybackInterpolator()
+    @State private var scrubStartProgress: Double? = nil
+    @State private var isScrubbing = false
+    @State private var scrubProgress: Double = 0
 
     // Waveform styling
     private let barWidth: CGFloat = 3
@@ -15,12 +19,6 @@ struct WaveformPlayer: View {
     private let containerHeight: CGFloat = 60
     private let playButtonSize: CGFloat = 48
 
-    /// Current playback progress [0.0...1.0]
-    private var progress: Double {
-        guard recording.duration > 0 else { return 0 }
-        return audioService.currentTime / recording.duration
-    }
-
     var body: some View {
         HStack(spacing: 12) {
             // Play/Pause Button
@@ -28,11 +26,8 @@ struct WaveformPlayer: View {
                 .zIndex(1)  // Ensure button stays on top
 
             // Scrolling Waveform Container
-            if isLoading {
-                loadingView
-            } else {
-                waveformScrollContainer
-            }
+            // Always show waveform container - loading is rare with pre-generation
+            waveformScrollContainer
         }
         .frame(height: containerHeight)
         .padding(.horizontal, 16)
@@ -43,6 +38,25 @@ struct WaveformPlayer: View {
         }
         .onAppear {
             audioService.setupAudioSession()
+        }
+        .onChange(of: audioService.currentTime) { oldTime, newTime in
+            // Skip interpolator updates during active scrubbing
+            guard !isScrubbing else { return }
+
+            // Detect seeks (time jump > 200ms suggests scrub)
+            if abs(newTime - oldTime) > 0.2 {
+                interpolator.reset(to: newTime, playing: audioService.isPlaying)  // Instant jump for seeks, preserve playing state
+            } else {
+                interpolator.updatePosition(newTime, playing: audioService.isPlaying)
+            }
+        }
+        .onChange(of: audioService.isPlaying) { _, isPlaying in
+            // Update interpolator playing state immediately when playback starts/stops
+            if isPlaying {
+                interpolator.updatePosition(audioService.currentTime, playing: true)
+            } else {
+                interpolator.reset(to: audioService.currentTime, playing: false)
+            }
         }
     }
 
@@ -58,59 +72,74 @@ struct WaveformPlayer: View {
         }
     }
 
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<40, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.primary.opacity(0.2))
-                    .frame(width: barWidth, height: containerHeight * 0.4)
-            }
-        }
-    }
-
     // MARK: - Waveform Scroll Container
 
     private var waveformScrollContainer: some View {
         GeometryReader { geometry in
-            ZStack {
-                // Scrolling waveform bars
-                waveformBars(containerWidth: geometry.size.width)
+            TimelineView(.animation) { context in
+                // Use scrub progress during active dragging, otherwise use interpolated time
+                let progress = computeProgress(at: context.date.timeIntervalSinceReferenceDate)
 
-                // Fixed center playhead
-                centerPlayhead
+                waveformContent(
+                    containerWidth: geometry.size.width,
+                    progress: progress
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)  // Fill geometry reader
-            .clipped()  // Prevent overflow
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        handleScrub(value: value, containerWidth: geometry.size.width)
-                    }
-            )
         }
+    }
+
+    private func computeProgress(at renderTime: TimeInterval) -> Double {
+        if isScrubbing {
+            return scrubProgress
+        } else {
+            let interpolatedTime = interpolator.getInterpolatedTime(at: renderTime)
+            return recording.duration > 0 ? interpolatedTime / recording.duration : 0
+        }
+    }
+
+    private func waveformContent(containerWidth: CGFloat, progress: Double) -> some View {
+        ZStack {
+            waveformBars(containerWidth: containerWidth, progress: progress)
+            centerPlayhead
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    handleScrub(value: value, containerWidth: containerWidth)
+                }
+                .onEnded { value in
+                    // Final seek and reset interpolator
+                    handleScrub(value: value, containerWidth: containerWidth)
+                    isScrubbing = false
+                    scrubStartProgress = nil
+                    interpolator.reset(to: audioService.currentTime, playing: audioService.isPlaying)
+                }
+        )
     }
 
     // MARK: - Waveform Bars
 
-    private func waveformBars(containerWidth: CGFloat) -> some View {
-        let offset = calculateOffset(containerWidth: containerWidth)
+    private func waveformBars(containerWidth: CGFloat, progress: Double) -> some View {
+        let offset = calculateOffset(containerWidth: containerWidth, progress: progress)
 
         return HStack(spacing: barSpacing) {
             ForEach(Array(samples.enumerated()), id: \.offset) { index, amplitude in
                 waveformBar(
                     amplitude: amplitude,
                     index: index,
-                    totalBars: samples.count
+                    totalBars: samples.count,
+                    progress: progress
                 )
             }
         }
         .offset(x: offset)
+        .animation(isScrubbing ? nil : .spring(response: 0.15, dampingFraction: 1.0), value: offset)
     }
 
-    private func waveformBar(amplitude: Float, index: Int, totalBars: Int) -> some View {
+    private func waveformBar(amplitude: Float, index: Int, totalBars: Int, progress: Double) -> some View {
         let barHeight = max(minBarHeight, CGFloat(amplitude) * containerHeight)
         let barProgress = Double(index) / Double(totalBars)
         let isPastPlayhead = barProgress <= progress
@@ -118,6 +147,7 @@ struct WaveformPlayer: View {
         return RoundedRectangle(cornerRadius: 2)
             .fill(isPastPlayhead ? Color.primary.opacity(0.8) : Color.primary.opacity(0.3))
             .frame(width: barWidth, height: barHeight)
+            .animation(.linear(duration: 0.05), value: isPastPlayhead)  // Smooth color fade
     }
 
     // MARK: - Center Playhead
@@ -132,7 +162,7 @@ struct WaveformPlayer: View {
     // MARK: - Scroll Offset Calculation
 
     /// Calculate horizontal offset so waveform scrolls under center playhead
-    private func calculateOffset(containerWidth: CGFloat) -> CGFloat {
+    private func calculateOffset(containerWidth: CGFloat, progress: Double) -> CGFloat {
         let totalWaveformWidth = CGFloat(samples.count) * (barWidth + barSpacing)
         let centerX = containerWidth / 2
         let progressOffset = CGFloat(progress) * totalWaveformWidth
@@ -150,9 +180,21 @@ struct WaveformPlayer: View {
     // MARK: - Gestures
 
     private func handleScrub(value: DragGesture.Value, containerWidth: CGFloat) {
-        // Direct mapping: screen position → timeline position
-        let dragX = value.location.x
-        let newProgress = max(0, min(1, dragX / containerWidth))
+        // Capture initial progress at start of drag
+        if scrubStartProgress == nil {
+            isScrubbing = true
+            scrubStartProgress = recording.duration > 0 ? audioService.currentTime / recording.duration : 0
+        }
+
+        // Translation-based scrubbing: drag left = scroll forward, drag right = scroll backward
+        let totalWaveformWidth = CGFloat(samples.count) * (barWidth + barSpacing)
+        let progressDelta = -value.translation.width / totalWaveformWidth  // Negative = reverse direction
+        let newProgress = max(0, min(1, (scrubStartProgress ?? 0) + progressDelta))
+
+        // Update scrub progress for immediate visual feedback
+        scrubProgress = newProgress
+
+        // Seek audio (batched by gesture updates)
         let seekTime = recording.duration * newProgress
         audioService.seek(to: seekTime)
     }
@@ -172,6 +214,22 @@ struct WaveformPlayer: View {
     }
 
     private func loadWaveform() async {
+        // Check for cached waveform first (memory)
+        if let cachedSamples = recording.waveformSamples {
+            // Instant display - no loading state
+            samples = cachedSamples
+            isLoading = false
+            return
+        }
+
+        // Try loading from disk
+        if let diskSamples = recording.loadWaveform() {
+            samples = diskSamples
+            isLoading = false
+            return
+        }
+
+        // Fallback: Generate on-demand (for old recordings)
         isLoading = true
         defer { isLoading = false }
 
@@ -181,6 +239,11 @@ struct WaveformPlayer: View {
                 sampleCount: 200
             )
             samples = generatedSamples
+
+            // Cache for next time
+            var mutableRecording = recording
+            mutableRecording.waveformSamples = generatedSamples
+            try? mutableRecording.saveWaveform(generatedSamples)
         } catch {
             print("Waveform generation failed: \(error)")
             // Fallback to moderate amplitude bars

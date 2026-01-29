@@ -36,6 +36,7 @@
 		A1000044001 /* MediaPlayerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000044000 /* MediaPlayerBar.swift */; };
 		A1000045001 /* WaveformPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000045000 /* WaveformPlayer.swift */; };
 		A1000046001 /* WaveformGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000046000 /* WaveformGenerator.swift */; };
+		A1000047001 /* PlaybackInterpolator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000047000 /* PlaybackInterpolator.swift */; };
 		A1EMBED0001 /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -97,6 +98,7 @@
 		A1000044000 /* MediaPlayerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerBar.swift; sourceTree = "<group>"; };
 		A1000045000 /* WaveformPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformPlayer.swift; sourceTree = "<group>"; };
 		A1000046000 /* WaveformGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformGenerator.swift; sourceTree = "<group>"; };
+		A1000047000 /* PlaybackInterpolator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackInterpolator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -297,6 +299,7 @@
 				A1000043000 /* TranscriptBubbleView.swift */,
 				A1000044000 /* MediaPlayerBar.swift */,
 				A1000045000 /* WaveformPlayer.swift */,
+				A1000047000 /* PlaybackInterpolator.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -438,6 +441,7 @@
 				A1000044001 /* MediaPlayerBar.swift in Sources */,
 				A1000045001 /* WaveformPlayer.swift in Sources */,
 				A1000046001 /* WaveformGenerator.swift in Sources */,
+				A1000047001 /* PlaybackInterpolator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
