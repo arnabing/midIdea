@@ -28,16 +28,21 @@ midIDEA is a native iOS voice recorder app with AI-powered transcription and ins
 - `LiquidAudioVisualizer` - Audio-reactive MeshGradient background (see below)
 - `ThinkingGlimmer` - Claude-like transcription loading indicator with shimmer animation
 
-### LiquidAudioVisualizer
-Full-screen MeshGradient (4x4 grid, 16 points) with voice-reactive animation.
+### Visualizer Styles (3-finger tap to cycle)
 
-**Visual Styles** (3-finger tap to toggle):
-- **Liquid Ocean**: Smooth horizontal wave bands, ocean color palette
-- **Plasma Pulse**: High contrast, dramatic movement with peak explosions
+7 voice-reactive visualizer styles, routed via `VisualizerContainer`:
 
-**Technical Details**:
-- Renders at 120Hz via `TimelineView(.animation)`
-- `AudioInterpolator` smooths 20Hz audio data to 120Hz rendering
+| # | Style | Tech | Audio → Visual |
+|---|-------|------|---------------|
+| 1 | Liquid Ocean | MeshGradient 4x4 | Horizontal wave bands, ocean colors |
+| 2 | Plasma Pulse | MeshGradient 4x4 | High contrast, aggressive distortion, peak flash |
+| 3 | Breathing Aura | MeshGradient 4x4 | 5s idle breathing, cool→warm color crossfade |
+| 4 | Radiant Pulse | MeshGradient 4x4 | Radial center breathing, pastel→neon crossfade |
+| 5 | **Metal Orb** | Metal shader (MTKView) | ElevenLabs-style orb, sRGB→linear colors (**best responsiveness**) |
+| 6 | Shader Glow | MeshGradient + Inferno | 4-layer FX: RGB split, glow, water ripple, hue shift |
+| 7 | Particle Field | SwiftUI Canvas | Center-biased particles, upward drift, audio spawn rate |
+
+**MeshGradient notes** (styles 1-4):
 - Row clamping prevents mesh triangulation artifacts (Row 1: [0.12, 0.48], Row 2: [0.52, 0.88])
 - Cached color palettes eliminate per-frame `Color(hex:)` parsing
 - No `.drawingGroup()` or `.brightness()` modifiers (cause flickering)
@@ -93,11 +98,11 @@ midIDEA/
 │   ├── Main/         # MainContainerView, RecordingRootView, SidebarDrawer
 │   ├── Detail/       # TranscriptDetailView, TranscriptBubbleView, ThinkingGlimmer
 │   ├── Recorder/     # Legacy recorder views (TalkboyRealisticView, etc.)
-│   └── Minimal/      # LiquidAudioVisualizer, onboarding views
+│   └── Minimal/      # All visualizers, VisualizerContainer, AudioInterpolator
 ├── Services/         # AudioService, TranscriptionService, AIService
 ├── Models/           # Recording model, RecordingStore
 ├── Intents/          # Action Button / Siri Shortcuts (AppIntents)
-├── Visualizer/       # LiquidAudioVisualizer (MeshGradient)
+├── Visualizer/       # (legacy — visualizers now in Features/Minimal/)
 ├── Extensions/       # Color+Theme, Font+Typography
 └── Resources/        # Assets (colors, icons)
 
@@ -112,7 +117,7 @@ Shared/               # App Groups shared code
 ```
 
 ### Key Services
-- **AudioService**: Wraps AVAudioRecorder/AVAudioPlayer, handles metering, playback rate control
+- **AudioService**: AVAudioEngine recording with PCM tap + AVAudioPlayer playback (see Audio Pipeline below)
 - **RecordingStore**: Persists recordings metadata to UserDefaults, manages audio file lifecycle
 - **TranscriptionService**: On-device transcription via iOS 26 SpeechAnalyzer
 - **AIService**: Apple Intelligence integration for summaries and key points
@@ -149,7 +154,7 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 - Only active when `navigationPath.isEmpty`
 
 ### Hidden Gestures
-- **3-finger tap**: Toggle visualizer style (Liquid Ocean ↔ Plasma Pulse)
+- **3-finger tap**: Cycle through all 7 visualizer styles
 
 ### Recording Flow
 1. User taps record → `AudioService.startRecording()`
@@ -164,9 +169,53 @@ Audio files stored in app's Documents directory. Recording metadata (JSON) store
 - `NSMicrophoneUsageDescription`: Voice recording
 - `NSSpeechRecognitionUsageDescription`: On-device transcription
 
+## Audio-Reactive Visualizer Pipeline
+
+### Lessons learned (Jan 2026)
+
+The pipeline that makes the Metal Orb feel responsive. Apply these patterns to ALL visualizers.
+
+**1. Data source: AVAudioEngine + installTap (NOT AVAudioRecorder metering)**
+- `installTap(onBus:0, bufferSize:1024)` → ~43Hz PCM callbacks on audio render thread
+- `vDSP_rmsqv` for true RMS, `vDSP_maxmgv` for true peak (Accelerate framework)
+- Thread-safe `AudioFileWriter` wraps AVAudioFile with NSLock for concurrent tap + main thread access
+- Publishes `audioLevel` (RMS dB) and `peakLevel` (peak dB) via `Task { @MainActor }`
+- **Key lesson**: AVAudioRecorder's `averagePower`/`peakPower` is too lossy. Always use raw PCM via AVAudioEngine tap.
+
+**2. Smoothing: AudioInterpolator with asymmetric attack/release**
+- Smoothstep interpolation between ~43Hz samples for 120Hz rendering
+- Asymmetric: attack 0.6 (fast onset), release 0.12 (smooth decay)
+- Peak detection with 0.88 exponential decay per frame
+- **Key lesson**: Symmetric lerp kills transient response. Asymmetric attack/release matches audio compressor behavior.
+
+**3. Dynamic range: gentle normalization curve**
+- `pow(raw, 0.85) + 0.05` preserves whisper-vs-shout difference
+- Old curve `pow(0.6) * 1.8` crushed everything above -42dB to ~1.0
+- **Key lesson**: With good PCM data, gentle curves preserve more dynamics. Don't over-compress.
+
+**4. Metal renderer pattern (MetalOrb — the gold standard)**
+- Target-based uniforms set by `updateUIView` (SwiftUI cadence, ~43Hz)
+- draw()-side asymmetric lerp (attack 0.5, release 0.1) runs every Metal frame (60fps)
+- **Key lesson**: Metal renderers need their own smoothing in `draw()` because `updateUIView` doesn't fire every frame.
+
+**5. SwiftUI visualizer pattern (MeshGradient, Canvas, Shader)**
+- `TimelineView(.animation)` renders at 120Hz
+- `.onChange(of: audioLevel)` feeds AudioInterpolator at ~43Hz
+- `interpolator.getPhysics(at: time)` called per render frame for smoothed values
+- **Key lesson**: The visualizer renders faster than data arrives. AudioInterpolator bridges the gap.
+
+### Pipeline diagram
+```
+Mic → AVAudioEngine tap (1024 samples, ~43Hz, real-time thread)
+  → vDSP_rmsqv / vDSP_maxmgv (Accelerate)
+  → Task { @MainActor } → @Published peakLevel
+  → .onChange(of:) → AudioInterpolator.updateSample()
+  → TimelineView 120Hz → interpolator.getPhysics() → render
+```
+
 ## Frameworks
 
-SwiftUI, AVFoundation, Speech, AppIntents, CoreHaptics, ActivityKit, WidgetKit
+SwiftUI, AVFoundation, Accelerate, MetalKit, Speech, AppIntents, CoreHaptics, ActivityKit, WidgetKit
 
 ## Developer Account
 

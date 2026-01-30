@@ -44,7 +44,7 @@ final class AudioInterpolator: ObservableObject {
     private var previousSample: Float = 0
     private var currentSample: Float = 0
     private var lastUpdateTime: TimeInterval = 0
-    private let sampleInterval: TimeInterval = 1.0/60.0  // 60Hz from AudioService
+    private let sampleInterval: TimeInterval = 1.0/43.0  // ~43Hz from AVAudioEngine tap (1024 samples @ 44.1kHz)
 
     // Physics state
     private var smoothedLevel: Float = 0

@@ -1,5 +1,37 @@
 import AVFoundation
+import Accelerate
 import Combine
+
+// MARK: - Audio File Writer (thread-safe)
+
+/// Wraps AVAudioFile for thread-safe access from the audio render thread.
+/// The audio tap callback runs on a real-time thread and can't access @MainActor properties.
+private final class AudioFileWriter: @unchecked Sendable {
+    private var file: AVAudioFile?
+    private let lock = NSLock()
+
+    func open(url: URL, settings: [String: Any]) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        file = try AVAudioFile(forWriting: url, settings: settings)
+    }
+
+    func write(_ buffer: AVAudioPCMBuffer) {
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            try file?.write(from: buffer)
+        } catch {
+            print("AudioFileWriter: write error: \(error)")
+        }
+    }
+
+    func close() {
+        lock.lock()
+        defer { lock.unlock() }
+        file = nil
+    }
+}
 
 @MainActor
 class AudioService: NSObject, ObservableObject {
@@ -8,21 +40,28 @@ class AudioService: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
-    @Published var audioLevel: Float = 0
-    @Published var peakLevel: Float = -160
+    @Published var audioLevel: Float = 0       // RMS power in dB (for silence detection)
+    @Published var peakLevel: Float = -160      // Peak power in dB (for visualizers)
     @Published var duration: TimeInterval = 0
 
-    // MARK: - Private Properties
+    // MARK: - Recording (AVAudioEngine)
 
-    private var audioRecorder: AVAudioRecorder?
-    private var audioPlayer: AVAudioPlayer?
-    private var meteringTimer: Timer?
-    private var playbackTimer: Timer?
+    private var audioEngine: AVAudioEngine?
+    private var recordingStartTime: Date?
     private var currentRecordingURL: URL?
 
-    // MARK: - Metering
+    /// Audio file for writing — accessed from both main actor (open/close)
+    /// and audio render thread (write). Protected by nonisolated wrapper.
+    private let fileWriter = AudioFileWriter()
 
-    private var meteringTickCount: Int = 0
+    // MARK: - Playback (AVAudioPlayer — unchanged)
+
+    private var audioPlayer: AVAudioPlayer?
+    private var playbackTimer: Timer?
+
+    // MARK: - Housekeeping Timer
+
+    private var housekeepingTimer: Timer?
 
     // MARK: - Silence Detection
 
@@ -34,6 +73,13 @@ class AudioService: NSObject, ObservableObject {
     // MARK: - Constants
 
     static let maxRecordingDuration: TimeInterval = 30 * 60 // 30 minutes
+
+    // MARK: - Init
+
+    override init() {
+        super.init()
+        setupInterruptionHandling()
+    }
 
     // MARK: - Permissions
 
@@ -61,30 +107,41 @@ class AudioService: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Recording
+    // MARK: - Recording (AVAudioEngine + installTap)
 
     func startRecording() throws -> URL {
         let fileName = "\(UUID().uuidString).m4a"
         let url = Recording.recordingsDirectory.appendingPathComponent(fileName)
         currentRecordingURL = url
 
-        let settings: [String: Any] = [
+        let engine = AVAudioEngine()
+        let inputNode = engine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+
+        // Create output file using input node's sample rate (avoids resampling)
+        let fileSettings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100,
+            AVSampleRateKey: inputFormat.sampleRate,
             AVNumberOfChannelsKey: 1,
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
+        try fileWriter.open(url: url, settings: fileSettings)
 
-        audioRecorder = try AVAudioRecorder(url: url, settings: settings)
-        audioRecorder?.isMeteringEnabled = true
-        audioRecorder?.delegate = self
-        audioRecorder?.record()
+        // Install tap on input node: ~43Hz callbacks at 1024 buffer / 44.1kHz
+        // The tap callback runs on the audio render thread (real-time priority)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
+            self?.processPCMBuffer(buffer)
+        }
+
+        try engine.start()
+        audioEngine = engine
+        recordingStartTime = Date()
 
         isRecording = true
         currentTime = 0
-        silenceStartTime = nil  // Reset silence detection
+        silenceStartTime = nil
 
-        startMeteringTimer()
+        startHousekeepingTimer()
         playRecordStartSound()
 
         // Start Live Activity for Dynamic Island
@@ -94,12 +151,23 @@ class AudioService: NSObject, ObservableObject {
     }
 
     func stopRecording() -> (url: URL, duration: TimeInterval)? {
-        guard let recorder = audioRecorder, isRecording else { return nil }
+        guard isRecording else { return nil }
 
-        let duration = recorder.currentTime
-        recorder.stop()
+        let duration: TimeInterval
+        if let start = recordingStartTime {
+            duration = Date().timeIntervalSince(start)
+        } else {
+            duration = 0
+        }
 
-        stopMeteringTimer()
+        // Tear down audio engine
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+        fileWriter.close()
+        recordingStartTime = nil
+
+        stopHousekeepingTimer()
         isRecording = false
         audioLevel = 0
         peakLevel = -160
@@ -118,8 +186,14 @@ class AudioService: NSObject, ObservableObject {
     func cancelRecording() {
         guard isRecording else { return }
 
-        audioRecorder?.stop()
-        stopMeteringTimer()
+        // Tear down audio engine
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+        fileWriter.close()
+        recordingStartTime = nil
+
+        stopHousekeepingTimer()
         isRecording = false
         audioLevel = 0
         peakLevel = -160
@@ -134,7 +208,38 @@ class AudioService: NSObject, ObservableObject {
         currentRecordingURL = nil
     }
 
-    // MARK: - Playback
+    // MARK: - PCM Buffer Processing (runs on audio render thread)
+
+    /// Processes raw PCM audio buffers from the engine tap.
+    /// Computes true RMS and peak from actual waveform samples using Accelerate.
+    /// Called at ~43Hz (1024 samples at 44.1kHz) on the audio render thread.
+    private nonisolated func processPCMBuffer(_ buffer: AVAudioPCMBuffer) {
+        guard let channelData = buffer.floatChannelData else { return }
+        let samples = channelData[0]  // Channel 0 (mono)
+        let count = Int(buffer.frameLength)
+        guard count > 0 else { return }
+
+        // Write PCM to file (AVAudioFile handles float→AAC conversion)
+        fileWriter.write(buffer)
+
+        // True RMS from raw PCM samples (Accelerate/vDSP)
+        var rms: Float = 0
+        vDSP_rmsqv(samples, 1, &rms, vDSP_Length(count))
+        let rmsDB = rms > 0 ? 20 * log10(rms) : -160
+
+        // True peak from raw PCM samples (absolute max magnitude)
+        var peak: Float = 0
+        vDSP_maxmgv(samples, 1, &peak, vDSP_Length(count))
+        let peakDB = peak > 0 ? 20 * log10(peak) : -160
+
+        // Publish to main thread for visualizers
+        Task { @MainActor [weak self] in
+            self?.audioLevel = rmsDB
+            self?.peakLevel = peakDB
+        }
+    }
+
+    // MARK: - Playback (unchanged)
 
     func play(url: URL, rate: Float = 1.0) throws {
         stop()
@@ -214,38 +319,41 @@ class AudioService: NSObject, ObservableObject {
         // TODO: Play tape playback start sound
     }
 
-    // MARK: - Timers
+    // MARK: - Housekeeping Timer (20Hz — non-visualizer work only)
 
-    private func startMeteringTimer() {
-        meteringTickCount = 0
-        meteringTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
+    private func startHousekeepingTimer() {
+        housekeepingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.updateMetering()
+                self?.updateHousekeeping()
             }
         }
     }
 
-    private func stopMeteringTimer() {
-        meteringTimer?.invalidate()
-        meteringTimer = nil
+    private func stopHousekeepingTimer() {
+        housekeepingTimer?.invalidate()
+        housekeepingTimer = nil
     }
 
-    private func updateMetering() {
-        guard let recorder = audioRecorder, isRecording else { return }
-        recorder.updateMeters()
-        audioLevel = recorder.averagePower(forChannel: 0)
-        peakLevel = recorder.peakPower(forChannel: 0)
-        currentTime = recorder.currentTime
+    private func updateHousekeeping() {
+        guard isRecording else { return }
 
-        // Throttle non-visualizer work to ~20Hz (every 3rd tick of 60Hz timer)
-        meteringTickCount += 1
-        if meteringTickCount % 3 == 0 {
-            LiveActivityManager.shared.setAudioLevel(audioLevel)
-            checkForWidgetStopRequest()
-            checkSilence()
-            checkMaxDuration()
+        // Track recording duration
+        if let start = recordingStartTime {
+            currentTime = Date().timeIntervalSince(start)
         }
+
+        // Update Live Activity with audio level
+        LiveActivityManager.shared.setAudioLevel(audioLevel)
+
+        // Check for stop request from Dynamic Island widget
+        checkForWidgetStopRequest()
+
+        // Silence detection and max duration
+        checkSilence()
+        checkMaxDuration()
     }
+
+    // MARK: - Silence Detection
 
     private func checkSilence() {
         if audioLevel < silenceThreshold {
@@ -267,6 +375,8 @@ class AudioService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Playback Timer
+
     private func startPlaybackTimer() {
         playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -285,6 +395,35 @@ class AudioService: NSObject, ObservableObject {
         currentTime = player.currentTime
     }
 
+    // MARK: - Audio Session Interruption Handling
+
+    private func setupInterruptionHandling() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+    }
+
+    @objc nonisolated private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if type == .began {
+                // Phone call, Siri, etc. — stop recording gracefully
+                if self.isRecording {
+                    _ = self.stopRecording()
+                }
+            }
+            // Note: .ended case — we don't auto-resume recording after interruption.
+            // User should explicitly start a new recording.
+        }
+    }
+
     // MARK: - Widget Communication
 
     /// Check if the Dynamic Island widget requested to stop recording
@@ -297,17 +436,6 @@ class AudioService: NSObject, ObservableObject {
 
             // Stop the recording
             _ = stopRecording()
-        }
-    }
-}
-
-// MARK: - AVAudioRecorderDelegate
-
-extension AudioService: AVAudioRecorderDelegate {
-    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        Task { @MainActor in
-            isRecording = false
-            stopMeteringTimer()
         }
     }
 }
