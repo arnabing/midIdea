@@ -203,6 +203,8 @@ struct RecordingRootView: View {
             // Full-screen visualizer (disable hit testing so edge swipe works)
             VisualizerContainer(
                 audioLevel: audioService.peakLevel,
+                frequencyBands: audioService.frequencyBands,
+                onsetBands: audioService.onsetBands,
                 isRecording: audioService.isRecording,
                 isIdle: !audioService.isRecording,
                 visualStyle: visualStyle

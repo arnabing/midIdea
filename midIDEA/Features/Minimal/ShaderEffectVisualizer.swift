@@ -6,10 +6,13 @@ import Inferno
 /// Loud = full chromatic split + radial glow + noise distortion + hue shift.
 struct ShaderEffectVisualizer: View {
     let audioLevel: Float  // -60 to 0 dB
+    let frequencyBands: [Float]  // [bass, mid, treble] normalized 0-1
+    let onsetBands: [Float]      // [bass, mid, treble] spectral flux onset 0-1
     let isRecording: Bool
     let isIdle: Bool
 
     @State private var interpolator = AudioInterpolator()
+    @State private var bandInterpolator = BandInterpolator()
 
     private var normalizedLevel: Float {
         let clamped = max(-60, min(0, audioLevel))
@@ -21,50 +24,56 @@ struct ShaderEffectVisualizer: View {
             TimelineView(.animation) { context in
                 let time = context.date.timeIntervalSinceReferenceDate
                 let physics = interpolator.getPhysics(at: time)
+                let bandPhysics = bandInterpolator.getPhysics(at: time)
                 let smoothed = physics.smoothed
                 let peak = physics.peak
                 let size = geo.size
 
+                // Band-driven shader parameters
+                let bass = bandPhysics.bands.count > 0 ? bandPhysics.bands[0] : smoothed
+                let mid = bandPhysics.bands.count > 1 ? bandPhysics.bands[1] : smoothed
+                let treble = bandPhysics.bands.count > 2 ? bandPhysics.bands[2] : smoothed
+
                 // Base: Breathing Aura MeshGradient
                 baseMeshGradient(time: time, smoothed: smoothed, peak: peak)
-                    // Layer 1: RGB channel split via Inferno colorPlanes
+                    // Layer 1: RGB channel split — treble drives split intensity
                     .layerEffect(
                         InfernoShaderLibrary.colorPlanes(
                             .float2(
-                                Float(smoothed * 12.0),
-                                Float(smoothed * 8.0)
+                                Float(smoothed * 8.0 + treble * 10.0),
+                                Float(smoothed * 5.0 + treble * 7.0)
                             )
                         ),
                         maxSampleOffset: CGSize(width: 20, height: 20),
-                        isEnabled: smoothed > 0.05
+                        isEnabled: smoothed > 0.05 || treble > 0.1
                     )
-                    // Layer 2: Radial glow pulse
+                    // Layer 2: Radial glow pulse — mid drives glow
                     .colorEffect(
                         ShaderLibrary.radialGlow(
                             .float2(Float(size.width), Float(size.height)),
                             .float(Float(time)),
-                            .float(smoothed)
+                            .float(smoothed * 0.6 + mid * 0.7)
                         ),
-                        isEnabled: smoothed > 0.02
+                        isEnabled: smoothed > 0.02 || mid > 0.05
                     )
-                    // Layer 3: Water ripple distortion via Inferno
+                    // Layer 3: Water ripple distortion — bass drives ripple strength
                     .distortionEffect(
                         InfernoShaderLibrary.water(
                             .float2(Float(size.width), Float(size.height)),
                             .float(Float(time)),
-                            .float(2.0 + peak * 6.0),     // speed: 2-8
-                            .float(1.0 + peak * 4.0),     // strength: 1-5
-                            .float(8.0 + smoothed * 12.0)  // frequency: 8-20
+                            .float(2.0 + bass * 7.0 + peak * 3.0),     // speed: bass-driven
+                            .float(1.0 + bass * 5.0 + peak * 2.0),     // strength: bass-driven
+                            .float(8.0 + mid * 10.0 + smoothed * 5.0)  // frequency: mid-driven
                         ),
                         maxSampleOffset: CGSize(width: 15, height: 15),
-                        isEnabled: peak > 0.1
+                        isEnabled: peak > 0.1 || bass > 0.15
                     )
-                    // Layer 4: Hue shift driven by audio
+                    // Layer 4: Hue shift — treble drives color shift
                     .colorEffect(
                         ShaderLibrary.hueShift(
-                            .float(smoothed * 0.3)
+                            .float(smoothed * 0.15 + treble * 0.2)
                         ),
-                        isEnabled: smoothed > 0.05
+                        isEnabled: smoothed > 0.05 || treble > 0.1
                     )
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -73,9 +82,16 @@ struct ShaderEffectVisualizer: View {
         .onChange(of: audioLevel) { _, _ in
             interpolator.updateSample(normalizedLevel)
         }
+        .onChange(of: frequencyBands) { _, newBands in
+            bandInterpolator.updateBands(newBands)
+        }
+        .onChange(of: onsetBands) { _, newOnsets in
+            bandInterpolator.updateOnsets(newOnsets)
+        }
         .onChange(of: isRecording) { _, recording in
             if !recording {
                 interpolator.reset()
+                bandInterpolator.reset()
             }
         }
     }

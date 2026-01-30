@@ -96,6 +96,114 @@ final class AudioInterpolator: ObservableObject {
     }
 }
 
+// MARK: - Band Interpolator (Smooth 3-band FFT at 120Hz)
+
+/// Interpolates 3 frequency bands (bass/mid/treble) from ~43Hz audio data to 120Hz rendering.
+/// Each band has independent asymmetric attack/release and peak detection.
+/// Onset-aware: spectral flux onset signal temporarily speeds up release for rhythmic snapping.
+final class BandInterpolator: ObservableObject {
+    // Sample buffer per band
+    private var previousBands: [Float] = [0, 0, 0]
+    private var currentBands: [Float] = [0, 0, 0]
+    private var lastUpdateTime: TimeInterval = 0
+    private let sampleInterval: TimeInterval = 1.0/43.0
+
+    // Physics state per band
+    private var smoothedBands: [Float] = [0, 0, 0]
+    private var previousSmoothed: [Float] = [0, 0, 0]
+    private var bandPeaks: [Float] = [0, 0, 0]
+
+    // Onset-gated release state
+    private var currentOnsets: [Float] = [0, 0, 0]
+    private var onsetDecay: [Float] = [0, 0, 0]
+
+    /// Called when new frequency band data arrives (~43Hz)
+    func updateBands(_ bands: [Float]) {
+        guard bands.count == 3 else { return }
+        previousBands = currentBands
+        currentBands = bands
+        lastUpdateTime = CACurrentMediaTime()
+    }
+
+    /// Called when new onset data arrives (~43Hz)
+    func updateOnsets(_ onsets: [Float]) {
+        guard onsets.count == 3 else { return }
+        currentOnsets = onsets
+        for i in 0..<3 {
+            // When onset > 0.3 threshold, reset onset decay to 1.0 for fast release
+            if onsets[i] > 0.3 {
+                onsetDecay[i] = 1.0
+            }
+        }
+    }
+
+    /// Called every render frame (120Hz) — returns interpolated & smoothed band values + peaks
+    func getPhysics(at time: TimeInterval) -> (bands: [Float], peaks: [Float]) {
+        let now = CACurrentMediaTime()
+        let elapsed = now - lastUpdateTime
+        let t = Float(min(max(elapsed / sampleInterval, 0), 1.0))
+        let eased = t * t * (3 - 2 * t)  // Smoothstep
+
+        var bands = [Float](repeating: 0, count: 3)
+        var peaks = [Float](repeating: 0, count: 3)
+
+        // Per-band attack/release/decay tuning:
+        // Bass (0):   sustained, slower decay for thumping feel
+        // Mid (1):    slightly faster, good for vocals
+        // Treble (2): fast attack for transients, faster release to avoid smearing
+        let attacks: [Float] = [0.55, 0.65, 0.82]
+        let baseReleases: [Float] = [0.10, 0.14, 0.18]
+        let peakDecays: [Float] = [0.90, 0.88, 0.85]
+
+        // Onset boost factors per band: bass needs sharpest pulse for kicks
+        let onsetBoosts: [Float] = [3.5, 3.0, 2.5]
+
+        for i in 0..<3 {
+            // Decay onset influence: 0.92 per frame at 120Hz = ~83ms half-life
+            onsetDecay[i] *= 0.92
+
+            // Onset-boosted release: when onset detected, release speeds up dramatically
+            // Speech plosives (~0.2-0.4 onset) → release goes from 0.10 to ~0.21 (barely noticeable)
+            // Music kicks (~0.8-1.0 onset) → release goes from 0.10 to ~0.45 (night and day)
+            let release = min(0.6, baseReleases[i] * (1.0 + onsetDecay[i] * onsetBoosts[i]))
+
+            // Interpolate between samples
+            let interpolated = previousBands[i] + (currentBands[i] - previousBands[i]) * eased
+
+            // Asymmetric attack/release per band
+            let isRising = interpolated > smoothedBands[i]
+            let factor: Float = isRising ? attacks[i] : release
+            smoothedBands[i] += (interpolated - smoothedBands[i]) * factor
+
+            // Peak detection with decay — onset boosts peak sensitivity
+            let delta = smoothedBands[i] - previousSmoothed[i]
+            bandPeaks[i] *= peakDecays[i]
+            if delta > 0.03 {
+                // Onset-boosted peaks: kicks/transients produce stronger peak flashes
+                let peakGain = 3.0 * (1.0 + currentOnsets[i] * 2.0)
+                bandPeaks[i] = min(1.0, bandPeaks[i] + delta * peakGain)
+            }
+            previousSmoothed[i] = smoothedBands[i]
+
+            bands[i] = smoothedBands[i]
+            peaks[i] = bandPeaks[i]
+        }
+
+        return (bands, peaks)
+    }
+
+    /// Reset state (e.g., when recording stops)
+    func reset() {
+        previousBands = [0, 0, 0]
+        currentBands = [0, 0, 0]
+        smoothedBands = [0, 0, 0]
+        previousSmoothed = [0, 0, 0]
+        bandPeaks = [0, 0, 0]
+        currentOnsets = [0, 0, 0]
+        onsetDecay = [0, 0, 0]
+    }
+}
+
 // MARK: - Cached Color Palettes (Pre-computed, not per-frame)
 
 enum CachedColors {

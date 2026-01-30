@@ -63,6 +63,8 @@ private func processAudioLevel(_ raw: Float) -> Float {
 
 struct MetalOrbVisualizer: View {
     let audioLevel: Float  // -60 to 0 dB
+    let frequencyBands: [Float]  // [bass, mid, treble] normalized 0-1
+    let onsetBands: [Float]      // [bass, mid, treble] spectral flux onset 0-1
     let isRecording: Bool
 
     // ElevenLabs default colors (soft blue / periwinkle)
@@ -78,6 +80,8 @@ struct MetalOrbVisualizer: View {
 
                 MetalOrbRepresentable(
                     audioLevel: audioLevel,
+                    frequencyBands: frequencyBands,
+                    onsetBands: onsetBands,
                     isRecording: isRecording,
                     color1: Self.defaultColor1,
                     color2: Self.defaultColor2
@@ -95,6 +99,8 @@ struct MetalOrbVisualizer: View {
 
 private struct MetalOrbRepresentable: UIViewRepresentable {
     let audioLevel: Float
+    let frequencyBands: [Float]
+    let onsetBands: [Float]
     let isRecording: Bool
     let color1: Color
     let color2: Color
@@ -121,7 +127,7 @@ private struct MetalOrbRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: MTKView, context: Context) {
         context.coordinator.updateColors(color1: color1, color2: color2)
-        context.coordinator.updateVolumes(level: audioLevel, isRecording: isRecording)
+        context.coordinator.updateVolumes(level: audioLevel, bands: frequencyBands, onsets: onsetBands, isRecording: isRecording)
     }
 
     func makeCoordinator() -> OrbRenderer {
@@ -155,6 +161,17 @@ private class OrbRenderer: NSObject, MTKViewDelegate {
     private var targetInput: Float = 0.05
     private var targetOutput: Float = 0
 
+    // Band-driven targets: bass → volume/size, mid → animation speed, treble → shimmer
+    private var targetBass: Float = 0
+    private var targetMid: Float = 0
+    private var targetTreble: Float = 0
+    private var smoothedBass: Float = 0
+    private var smoothedMid: Float = 0
+    private var smoothedTreble: Float = 0
+
+    // Onset-gated release: onset signal speeds up decay for rhythmic snapping
+    private var onsetDecay: Float = 0  // Decays per frame, reset on onset
+
     init(color1: Color, color2: Color) {
         self.randomOffsets = (0..<7).map { _ in Float.random(in: 0...(Float.pi * 2)) }
         super.init()
@@ -168,15 +185,33 @@ private class OrbRenderer: NSObject, MTKViewDelegate {
         uniforms.color2 = colorToSIMD4(color2)
     }
 
-    func updateVolumes(level: Float, isRecording: Bool) {
+    func updateVolumes(level: Float, bands: [Float], onsets: [Float], isRecording: Bool) {
         if isRecording {
             let normalized = (max(-60, min(0, level)) + 60) / 60
             let processed = processAudioLevel(normalized)
-            targetInput = processed
-            targetOutput = processed * 0.6
+            // Bass drives orb volume/expansion, mid drives output intensity
+            let bass = bands.count > 0 ? bands[0] : processed
+            let mid = bands.count > 1 ? bands[1] : processed
+            let treble = bands.count > 2 ? bands[2] : processed
+            targetInput = max(processed, processAudioLevel(bass))
+            targetOutput = processAudioLevel(mid) * 0.9 + processAudioLevel(treble) * 0.3
+            targetBass = bass
+            targetMid = mid
+            targetTreble = treble
+
+            // Onset detection: reset decay for faster release on beats
+            let bassOnset = onsets.count > 0 ? onsets[0] : Float(0)
+            let midOnset = onsets.count > 1 ? onsets[1] : Float(0)
+            if bassOnset > 0.3 || midOnset > 0.3 {
+                onsetDecay = 1.0
+            }
         } else {
             targetInput = 0.05
             targetOutput = 0
+            targetBass = 0
+            targetMid = 0
+            targetTreble = 0
+            onsetDecay = 0
         }
     }
 
@@ -238,7 +273,25 @@ private class OrbRenderer: NSObject, MTKViewDelegate {
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return }
 
         let fps = max(view.preferredFramesPerSecond, 1)
-        animationTime += (1.0 / Float(fps)) * 0.1
+
+        // Decay onset influence per frame: 0.94 at 60fps = ~170ms half-life
+        onsetDecay *= 0.94
+
+        // Onset-boosted release factor for bass/mid smoothing
+        let onsetRelease: Float = 0.1 * (1.0 + onsetDecay * 3.0)  // 0.1 → up to 0.4 on beats
+        let clampedOnsetRelease = min(0.5, onsetRelease)
+
+        // Smooth bass/mid per Metal frame for animation modulation
+        let bassFactor: Float = targetBass > smoothedBass ? 0.5 : clampedOnsetRelease
+        smoothedBass += (targetBass - smoothedBass) * bassFactor
+        let midFactor: Float = targetMid > smoothedMid ? 0.5 : clampedOnsetRelease
+        smoothedMid += (targetMid - smoothedMid) * midFactor
+        let trebleFactor: Float = targetTreble > smoothedTreble ? 0.5 : 0.1
+        smoothedTreble += (targetTreble - smoothedTreble) * trebleFactor
+
+        // Mid + treble drive animation speed (faster wobble on vocals/transients)
+        let animSpeed: Float = 0.1 + smoothedMid * 0.12 + smoothedTreble * 0.08
+        animationTime += (1.0 / Float(fps)) * animSpeed
 
         uniforms.time = Float(CACurrentMediaTime() - startTime)
         uniforms.animation = animationTime
@@ -248,11 +301,11 @@ private class OrbRenderer: NSObject, MTKViewDelegate {
             randomOffsets[4], randomOffsets[5], randomOffsets[6], 0
         )
 
-        // Asymmetric attack/release: fast rise (0.5), smooth decay (0.1).
+        // Asymmetric attack/release: fast rise (0.5), onset-gated decay.
         // Runs every Metal frame (60fps) independent of SwiftUI update cadence.
-        let inputFactor: Float = targetInput > uniforms.inputVolume ? 0.5 : 0.1
+        let inputFactor: Float = targetInput > uniforms.inputVolume ? 0.5 : clampedOnsetRelease
         uniforms.inputVolume += (targetInput - uniforms.inputVolume) * inputFactor
-        let outputFactor: Float = targetOutput > uniforms.outputVolume ? 0.5 : 0.1
+        let outputFactor: Float = targetOutput > uniforms.outputVolume ? 0.5 : clampedOnsetRelease
         uniforms.outputVolume += (targetOutput - uniforms.outputVolume) * outputFactor
 
         encoder.setRenderPipelineState(pipeline)

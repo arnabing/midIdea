@@ -35,10 +35,13 @@ private struct Particle: Identifiable {
 /// Audio controls count, size, speed, and glow intensity.
 struct ParticleVisualizer: View {
     let audioLevel: Float  // -60 to 0 dB
+    let frequencyBands: [Float]  // [bass, mid, treble] normalized 0-1
+    let onsetBands: [Float]      // [bass, mid, treble] spectral flux onset 0-1
     let isRecording: Bool
     let isIdle: Bool
 
     @State private var interpolator = AudioInterpolator()
+    @State private var bandInterpolator = BandInterpolator()
     @State private var particles: [Particle] = []
     @State private var lastFrameTime: Double = CACurrentMediaTime()
 
@@ -59,9 +62,10 @@ struct ParticleVisualizer: View {
                 TimelineView(.animation) { context in
                     let now = CACurrentMediaTime()
                     let physics = interpolator.getPhysics(at: now)
+                    let bandPhysics = bandInterpolator.getPhysics(at: now)
 
                     Canvas { ctx, size in
-                        updateParticles(now: now, size: size, smoothed: physics.smoothed, peak: physics.peak)
+                        updateParticles(now: now, size: size, smoothed: physics.smoothed, peak: physics.peak, bands: bandPhysics.bands)
 
                         for particle in particles {
                             let effectiveOpacity = particle.envelopeOpacity * particle.opacity * Double(0.5 + physics.smoothed * 0.5)
@@ -104,22 +108,31 @@ struct ParticleVisualizer: View {
         .onChange(of: audioLevel) { _, _ in
             interpolator.updateSample(normalizedLevel)
         }
+        .onChange(of: frequencyBands) { _, newBands in
+            bandInterpolator.updateBands(newBands)
+        }
+        .onChange(of: onsetBands) { _, newOnsets in
+            bandInterpolator.updateOnsets(newOnsets)
+        }
         .onChange(of: isRecording) { _, recording in
             if !recording {
                 interpolator.reset()
+                bandInterpolator.reset()
             }
         }
     }
 
     // MARK: - Particle Simulation
 
-    private func updateParticles(now: Double, size: CGSize, smoothed: Float, peak: Float) {
+    private func updateParticles(now: Double, size: CGSize, smoothed: Float, peak: Float, bands: [Float] = [0, 0, 0]) {
         let dt = min(now - lastFrameTime, 0.05)  // Cap delta to avoid jumps
         // Note: lastFrameTime updated via DispatchQueue to avoid mutating state in Canvas
         DispatchQueue.main.async { lastFrameTime = now }
 
         let audio = Double(smoothed)
         let peakVal = Double(peak)
+        let bass = bands.count > 0 ? Double(bands[0]) : audio
+        let mid = bands.count > 1 ? Double(bands[1]) : audio
 
         // Age and move existing particles
         var alive: [Particle] = []
@@ -127,22 +140,22 @@ struct ParticleVisualizer: View {
             p.age += dt
             if p.age >= p.lifetime { continue }
 
-            // Movement: upward drift + sinusoidal horizontal wander
-            let speedMul = 1.0 + audio * 2.0
+            // Movement: bass drives upward speed, mid drives horizontal wander
+            let speedMul = 1.0 + bass * 3.5
             p.y += p.vy * dt * speedMul
-            p.x += sin(now * 2.0 + p.wanderPhase) * 0.5 * speedMul
+            p.x += sin(now * 2.0 + p.wanderPhase) * 0.5 * (1.0 + mid * 2.0)
             p.x += p.vx * dt
 
             alive.append(p)
         }
 
-        // Spawn new particles
+        // Spawn new particles: mid drives spawn rate
         let baseCount = isIdle ? 1 : 2
-        let audioCount = Int(audio * 80) + Int(peakVal * 40)
+        let audioCount = Int(mid * 80) + Int(bass * 30) + Int(peakVal * 30)
         let spawnCount = min(baseCount + audioCount, maxParticles - alive.count)
 
         for _ in 0..<max(0, spawnCount) {
-            let p = spawnParticle(size: size, audio: audio, peak: peakVal)
+            let p = spawnParticle(size: size, audio: audio, peak: peakVal, bass: bass)
             alive.append(p)
         }
 
@@ -154,7 +167,7 @@ struct ParticleVisualizer: View {
         DispatchQueue.main.async { particles = alive }
     }
 
-    private func spawnParticle(size: CGSize, audio: Double, peak: Double) -> Particle {
+    private func spawnParticle(size: CGSize, audio: Double, peak: Double, bass: Double = 0) -> Particle {
         // Center-biased Gaussian spawn (Box-Muller approximation)
         let u1 = Double.random(in: 0.001...1.0)
         let u2 = Double.random(in: 0.0...1.0)
@@ -165,8 +178,8 @@ struct ParticleVisualizer: View {
         let cx = size.width * 0.5 + gaussian * spread * size.width * 0.5
         let cy = size.height * 0.5 + Double.random(in: -1...1) * spread * size.height * 0.3
 
-        // Size: 2-8pt quiet, 12-16pt on bursts
-        let baseSize: CGFloat = CGFloat(2 + Double.random(in: 0...6))
+        // Size: bass drives base particle size, peak drives burst size
+        let baseSize: CGFloat = CGFloat(2 + Double.random(in: 0...6) + bass * 6)
         let burstSize: CGFloat = CGFloat(peak * Double.random(in: 8...16))
         let particleSize = baseSize + burstSize
 
