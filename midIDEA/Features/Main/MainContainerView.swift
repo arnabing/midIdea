@@ -184,7 +184,7 @@ struct RecordingRootView: View {
     @Namespace private var buttonNamespace
 
     // Visual style for experimenting (3-finger tap to cycle)
-    @State private var visualStyle: VisualizerStyle = .liquidOcean
+    @State private var visualStyle: VisualizerStyle = .metalOrb
     @State private var showStyleName = false
 
     private let prompts = [
@@ -201,8 +201,8 @@ struct RecordingRootView: View {
     var body: some View {
         ZStack {
             // Full-screen visualizer (disable hit testing so edge swipe works)
-            LiquidAudioVisualizer(
-                audioLevel: audioService.audioLevel,
+            VisualizerContainer(
+                audioLevel: audioService.peakLevel,
                 isRecording: audioService.isRecording,
                 isIdle: !audioService.isRecording,
                 visualStyle: visualStyle

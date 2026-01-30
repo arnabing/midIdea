@@ -9,6 +9,7 @@ class AudioService: NSObject, ObservableObject {
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
     @Published var audioLevel: Float = 0
+    @Published var peakLevel: Float = -160
     @Published var duration: TimeInterval = 0
 
     // MARK: - Private Properties
@@ -18,6 +19,10 @@ class AudioService: NSObject, ObservableObject {
     private var meteringTimer: Timer?
     private var playbackTimer: Timer?
     private var currentRecordingURL: URL?
+
+    // MARK: - Metering
+
+    private var meteringTickCount: Int = 0
 
     // MARK: - Silence Detection
 
@@ -97,6 +102,7 @@ class AudioService: NSObject, ObservableObject {
         stopMeteringTimer()
         isRecording = false
         audioLevel = 0
+        peakLevel = -160
 
         playRecordStopSound()
 
@@ -116,6 +122,7 @@ class AudioService: NSObject, ObservableObject {
         stopMeteringTimer()
         isRecording = false
         audioLevel = 0
+        peakLevel = -160
 
         // End Live Activity
         LiveActivityManager.shared.endRecordingActivity()
@@ -210,7 +217,8 @@ class AudioService: NSObject, ObservableObject {
     // MARK: - Timers
 
     private func startMeteringTimer() {
-        meteringTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+        meteringTickCount = 0
+        meteringTimer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.updateMetering()
             }
@@ -226,33 +234,36 @@ class AudioService: NSObject, ObservableObject {
         guard let recorder = audioRecorder, isRecording else { return }
         recorder.updateMeters()
         audioLevel = recorder.averagePower(forChannel: 0)
+        peakLevel = recorder.peakPower(forChannel: 0)
         currentTime = recorder.currentTime
 
-        // Update Live Activity with audio level
-        LiveActivityManager.shared.setAudioLevel(audioLevel)
-
-        // Check for stop request from Dynamic Island widget
-        checkForWidgetStopRequest()
-
-        // Check max duration
-        if currentTime >= Self.maxRecordingDuration {
-            _ = stopRecording()
+        // Throttle non-visualizer work to ~20Hz (every 3rd tick of 60Hz timer)
+        meteringTickCount += 1
+        if meteringTickCount % 3 == 0 {
+            LiveActivityManager.shared.setAudioLevel(audioLevel)
+            checkForWidgetStopRequest()
+            checkSilence()
+            checkMaxDuration()
         }
+    }
 
-        // Silence detection
+    private func checkSilence() {
         if audioLevel < silenceThreshold {
-            // Audio is below threshold (silence)
             if silenceStartTime == nil {
                 silenceStartTime = Date()
             } else if let startTime = silenceStartTime,
                       Date().timeIntervalSince(startTime) >= silenceDuration {
-                // Silence duration exceeded - trigger auto-stop
                 silenceStartTime = nil
                 onSilenceAutoStop?()
             }
         } else {
-            // Sound detected - reset silence timer
             silenceStartTime = nil
+        }
+    }
+
+    private func checkMaxDuration() {
+        if currentTime >= Self.maxRecordingDuration {
+            _ = stopRecording()
         }
     }
 

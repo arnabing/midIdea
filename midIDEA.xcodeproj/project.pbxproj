@@ -38,6 +38,13 @@
 		A1000046001 /* WaveformGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000046000 /* WaveformGenerator.swift */; };
 		A1000047001 /* PlaybackInterpolator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000047000 /* PlaybackInterpolator.swift */; };
 		A1EMBED0001 /* RecordingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 06276F9C2F17434A00A6D44A /* RecordingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A1000048001 /* VisualizerTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000048000 /* VisualizerTypes.swift */; };
+		A1000049001 /* VisualizerContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000049000 /* VisualizerContainer.swift */; };
+		A100004A001 /* MetalOrbVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100004A000 /* MetalOrbVisualizer.swift */; };
+		A100004B001 /* ShaderEffectVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100004B000 /* ShaderEffectVisualizer.swift */; };
+		A100004C001 /* ParticleVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100004C000 /* ParticleVisualizer.swift */; };
+		A100004D001 /* OrbShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = A100004D000 /* OrbShader.metal */; };
+		A100004E001 /* VisualEffects.metal in Sources */ = {isa = PBXBuildFile; fileRef = A100004E000 /* VisualEffects.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +106,13 @@
 		A1000045000 /* WaveformPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformPlayer.swift; sourceTree = "<group>"; };
 		A1000046000 /* WaveformGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformGenerator.swift; sourceTree = "<group>"; };
 		A1000047000 /* PlaybackInterpolator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackInterpolator.swift; sourceTree = "<group>"; };
+		A1000048000 /* VisualizerTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerTypes.swift; sourceTree = "<group>"; };
+		A1000049000 /* VisualizerContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerContainer.swift; sourceTree = "<group>"; };
+		A100004A000 /* MetalOrbVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalOrbVisualizer.swift; sourceTree = "<group>"; };
+		A100004B000 /* ShaderEffectVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShaderEffectVisualizer.swift; sourceTree = "<group>"; };
+		A100004C000 /* ParticleVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleVisualizer.swift; sourceTree = "<group>"; };
+		A100004D000 /* OrbShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = OrbShader.metal; sourceTree = "<group>"; };
+		A100004E000 /* VisualEffects.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = VisualEffects.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -193,7 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000GE000 /* Main */,
-				A10000GF000 /* Detail */,
+				A10000GG000 /* Detail */,
 				A10000G5000 /* Recorder */,
 				A10000G6000 /* Library */,
 				A10000GC000 /* Minimal */,
@@ -257,6 +271,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000019000 /* Assets.xcassets */,
+				A10000GF000 /* Shaders */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -270,6 +285,11 @@
 				A1000036000 /* MinimalWaveformBar.swift */,
 				A1000037000 /* MinimalRecordingsList.swift */,
 				A1000038000 /* ActionButtonOnboardingView.swift */,
+				A1000048000 /* VisualizerTypes.swift */,
+				A1000049000 /* VisualizerContainer.swift */,
+				A100004A000 /* MetalOrbVisualizer.swift */,
+				A100004B000 /* ShaderEffectVisualizer.swift */,
+				A100004C000 /* ParticleVisualizer.swift */,
 			);
 			path = Minimal;
 			sourceTree = "<group>";
@@ -292,7 +312,7 @@
 			path = Main;
 			sourceTree = "<group>";
 		};
-		A10000GF000 /* Detail */ = {
+		A10000GG000 /* Detail */ = {
 			isa = PBXGroup;
 			children = (
 				A1000042000 /* TranscriptDetailView.swift */,
@@ -302,6 +322,15 @@
 				A1000047000 /* PlaybackInterpolator.swift */,
 			);
 			path = Detail;
+			sourceTree = "<group>";
+		};
+		A10000GF000 /* Shaders */ = {
+			isa = PBXGroup;
+			children = (
+				A100004D000 /* OrbShader.metal */,
+				A100004E000 /* VisualEffects.metal */,
+			);
+			path = Shaders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -344,6 +373,9 @@
 				06276FB12F17434B00A6D44A /* PBXTargetDependency */,
 			);
 			name = midIDEA;
+			packageProductDependencies = (
+				A1SPM001000 /* Inferno */,
+			);
 			productName = midIDEA;
 			productReference = A1000000000 /* midIDEA.app */;
 			productType = "com.apple.product-type.application";
@@ -375,6 +407,9 @@
 				Base,
 			);
 			mainGroup = A10000G0000;
+			packageReferences = (
+				A1SPM000000 /* XCRemoteSwiftPackageReference "Inferno" */,
+			);
 			productRefGroup = A10000G2000 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -442,6 +477,13 @@
 				A1000045001 /* WaveformPlayer.swift in Sources */,
 				A1000046001 /* WaveformGenerator.swift in Sources */,
 				A1000047001 /* PlaybackInterpolator.swift in Sources */,
+				A1000048001 /* VisualizerTypes.swift in Sources */,
+				A1000049001 /* VisualizerContainer.swift in Sources */,
+				A100004A001 /* MetalOrbVisualizer.swift in Sources */,
+				A100004B001 /* ShaderEffectVisualizer.swift in Sources */,
+				A100004C001 /* ParticleVisualizer.swift in Sources */,
+				A100004D001 /* OrbShader.metal in Sources */,
+				A100004E001 /* VisualEffects.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -738,6 +780,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1SPM000000 /* XCRemoteSwiftPackageReference "Inferno" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twostraws/Inferno.git";
+			requirement = {
+				kind = branch;
+				branch = main;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1SPM001000 /* Inferno */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1SPM000000 /* XCRemoteSwiftPackageReference "Inferno" */;
+			productName = Inferno;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000P0000 /* Project object */;
 }
